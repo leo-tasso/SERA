@@ -1,0 +1,23 @@
+{
+  "parameter": "tourism_support_level",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "122_54_DF_DCSC_TUR_3",
+    "dataset": "Occupancy in collective tourist accommodation",
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "tourism_support_level"
+    }
+  },
+  "project": {
+    "entity": "policy",
+    "code_field": "area_code",
+    "levels": [
+      "national",
+      "regional",
+      "provincial"
+    ],
+    "notes": "Annual proxy derived by aggregating monthly ISTAT tourism occupancy data."
+  }
+}

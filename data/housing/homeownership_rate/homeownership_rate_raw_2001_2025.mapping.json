@@ -1,0 +1,25 @@
+{
+  "indicator": "homeownership_rate",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "DF_DCSS_ABITAZIONI_TV_2",
+    "filters": {
+      "INDICATOR": "NUM_OCC_DW_AV",
+      "OWNERSHIP_TYPE": "OWN"
+    },
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "owned_dwelling_count"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "province",
+      "municipality"
+    ],
+    "notes": "Homeownership rate computed as owned dwellings / all occupied dwellings * 100."
+  }
+}

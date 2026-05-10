@@ -1,0 +1,26 @@
+{
+  "indicator": "carbon_emissions",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "97_187",
+    "filters": {
+      "DATA_TYPE_AGGR": "AE_T",
+      "POLLUTANTS_ENViSS": "CO2",
+      "CAUSE_EMISSIONS": "TOT",
+      "BRKDW_INDUSTRY_NACE_REV2": "Z"
+    },
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "carbon_emissions"
+    }
+  },
+  "project": {
+    "entity": "policy",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "National CO2 emissions proxy from ISTAT NAMEA emissions table."
+  }
+}

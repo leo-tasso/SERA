@@ -1,0 +1,22 @@
+{
+  "indicator": "tourist_arrivals",
+  "source": {
+    "provider": "World Bank",
+    "url": "https://api.worldbank.org/v2/country/IT/indicator/ST.INT.ARVL",
+    "indicator_code": "ST.INT.ARVL",
+    "indicator_name": "International tourist arrivals",
+    "columns": {
+      "countryiso3code": "area_code",
+      "date": "year",
+      "value": "tourist_arrivals"
+    }
+  },
+  "project": {
+    "entity": "policy",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "National proxy for international tourism arrivals."
+  }
+}

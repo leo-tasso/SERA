@@ -1,0 +1,21 @@
+{
+  "indicator": "agricultural_productivity",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "101_148_DF_DCSP_RICAREA_1",
+    "filters": {},
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "agricultural_productivity"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "regional"
+    ],
+    "notes": "Agricultural productivity proxy from economic results of farms (key data)."
+  }
+}

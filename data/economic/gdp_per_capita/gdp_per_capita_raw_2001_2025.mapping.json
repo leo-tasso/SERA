@@ -1,0 +1,26 @@
+{
+  "indicator": "gdp_per_capita",
+  "source": {
+    "dataflow_id": "93_1227_DF_DCCN_TNA1_6",
+    "key": "A..B1G_B_W2_S1_R_FT.Z.Z.Z.V.N.Z.2025M12",
+    "columns": {
+      "REF_AREA": "area_code",
+      "FREQ": "frequency",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "gdp_per_capita",
+      "DATA_TYPE_AGGR": "measure_code",
+      "EDITION": "edition",
+      "UNIT_MEAS": "unit"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "region",
+      "macroarea",
+      "national"
+    ],
+    "notes": "GDP per capita in euro, territorial national accounts."
+  }
+}

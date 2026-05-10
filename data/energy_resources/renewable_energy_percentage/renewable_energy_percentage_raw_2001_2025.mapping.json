@@ -1,0 +1,22 @@
+{
+  "indicator": "renewable_energy_percentage",
+  "source": {
+    "provider": "World Bank",
+    "url": "https://api.worldbank.org/v2/country/IT/indicator/EG.FEC.RNEW.ZS",
+    "indicator_code": "EG.FEC.RNEW.ZS",
+    "indicator_name": "Renewable energy consumption (% of total final energy consumption)",
+    "columns": {
+      "countryiso3code": "area_code",
+      "date": "year",
+      "value": "renewable_energy_percentage"
+    }
+  },
+  "project": {
+    "entity": "policy",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "National proxy for share of renewable energy in total final energy consumption."
+  }
+}

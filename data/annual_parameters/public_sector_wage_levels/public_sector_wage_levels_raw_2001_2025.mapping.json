@@ -1,0 +1,22 @@
+{
+  "parameter": "public_sector_wage_levels",
+  "source": {
+    "provider": "World Bank",
+    "url": "https://api.worldbank.org/v2/country/IT/indicator/GC.XPN.COMP.ZS",
+    "indicator_code": "GC.XPN.COMP.ZS",
+    "indicator_name": "Compensation of employees (% of expense)",
+    "columns": {
+      "countryiso3code": "area_code",
+      "date": "year",
+      "value": "public_sector_wage_levels"
+    }
+  },
+  "project": {
+    "entity": "policy",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Annual proxy for public-sector wage levels."
+  }
+}

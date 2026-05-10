@@ -1,0 +1,21 @@
+{
+  "indicator": "migration_flows",
+  "source": {
+    "dataflow_id": "28_185_DF_DCIS_MIGRAZIONI_1",
+    "key": "A.IT.CORE.ALL............",
+    "columns": {
+      "FREQ": "frequency",
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "migrations"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Internal migration flows (Migrazioni interne) - ISTAT dataflow 28_185_DF_DCIS_MIGRAZIONI_1. National-level aggregated migration data. Currently limited to national level (IT). Data represents internal migrations (changes of residence) for Italian and foreign residents."
+  }
+}

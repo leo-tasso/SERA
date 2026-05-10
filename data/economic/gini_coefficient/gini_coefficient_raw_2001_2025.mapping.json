@@ -1,0 +1,22 @@
+{
+  "indicator": "gini_coefficient",
+  "source": {
+    "dataflow_id": "32_221_DF_DCCV_GINIREDD_1",
+    "key": "A.IT.DISUG_REDDNET_GINI.16.1",
+    "columns": {
+      "REF_AREA": "area_code",
+      "FREQ": "frequency",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "gini_coefficient",
+      "DATA_TYPE": "data_type"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Gini coefficient of net income distribution."
+  }
+}

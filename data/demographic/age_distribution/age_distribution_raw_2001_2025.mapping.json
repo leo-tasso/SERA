@@ -1,0 +1,24 @@
+{
+  "indicator": "age_distribution",
+  "source": {
+    "dataflow_id": "22_289_DF_DCIS_POPRES1_1",
+    "key": "A..JAN.1..1",
+    "columns": {
+      "REF_AREA": "area_code",
+      "FREQ": "frequency",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "population",
+      "SEX": "sex",
+      "AGE": "age_group"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "province",
+      "region",
+      "national"
+    ]
+  }
+}

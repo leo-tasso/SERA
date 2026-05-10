@@ -1,0 +1,27 @@
+{
+  "indicator": "sustainability",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "DF_BES_TERRIT_10",
+    "filters": {
+      "DOMAIN": "BES_10",
+      "DATA_TYPE": "10AMB017",
+      "SEX": "T"
+    },
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "waste_separate_collection_pct"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "province",
+      "region",
+      "national"
+    ],
+    "notes": "Sustainability proxy from BES: separate collection rate of municipal waste."
+  }
+}

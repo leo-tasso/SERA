@@ -1,0 +1,26 @@
+{
+  "indicator": "income",
+  "source": {
+    "dataflow_id": "93_1095_DF_DCCN_ISTITUZ_TNA1_1",
+    "key": "A..B6N_B_W0.S14.Z.Z.V.S.N.2025M12",
+    "columns": {
+      "REF_AREA": "area_code",
+      "FREQ": "frequency",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "income",
+      "DATA_TYPE_AGGR": "measure_code",
+      "INSTITUTIONAL_SECTOR": "institutional_sector",
+      "EDITION": "edition"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "region",
+      "macroarea",
+      "national"
+    ],
+    "notes": "Household net disposable income from ISTAT national accounts (current prices)."
+  }
+}

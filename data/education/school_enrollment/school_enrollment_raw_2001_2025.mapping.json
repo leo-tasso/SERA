@@ -1,0 +1,34 @@
+{
+  "indicator": "school_enrollment",
+  "source": {
+    "provider": "ISTAT",
+    "flow_ids": [
+      "52_1044_DF_DCIS_SCUOLE_5",
+      "52_1044_DF_DCIS_SCUOLE_8",
+      "52_1044_DF_DCIS_SCUOLE_11"
+    ],
+    "filters": {
+      "DATA_TYPE": "ENR",
+      "SEX": "T",
+      "CITIZENSHIP": "TOTAL",
+      "TYPE_SCHOOL_MANAGEMENT": "ALL",
+      "TYPE_SCHOOL": "ALL"
+    },
+    "columns": {
+      "REF_AREA": "area_code",
+      "SCHOOL_LEVEL": "school_level",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "enrollment_count"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "province",
+      "region",
+      "national"
+    ],
+    "notes": "School enrollment (students) from ISTAT scuola datasets; series currently available from 2015 onward."
+  }
+}

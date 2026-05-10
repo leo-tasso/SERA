@@ -1,0 +1,22 @@
+{
+  "parameter": "housing_urban_development_support",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "33_225_DF_DCCV_ABITSPESA_6",
+    "dataset": "Housing costs - regions and municipality type",
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "housing_urban_development_support"
+    }
+  },
+  "project": {
+    "entity": "policy",
+    "code_field": "area_code",
+    "levels": [
+      "national",
+      "regional"
+    ],
+    "notes": "Annual proxy derived from ISTAT housing-cost indicators by region."
+  }
+}

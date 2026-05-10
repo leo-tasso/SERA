@@ -1,0 +1,22 @@
+{
+  "indicator": "healthcare_facility_density",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "43_967_DF_DCIS_OSPED_2",
+    "filters": {},
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "healthcare_facility_density"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "national",
+      "regional"
+    ],
+    "notes": "Healthcare facility density proxy: hospital beds from ISTAT."
+  }
+}

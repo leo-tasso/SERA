@@ -1,0 +1,22 @@
+{
+  "indicator": "death_rate",
+  "source": {
+    "dataflow_id": "26_29_DF_DCIS_DECESSI_1",
+    "key": "A.IT.............",
+    "columns": {
+      "REF_AREA": "area_code",
+      "FREQ": "frequency",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "death_rate",
+      "DATA_TYPE": "data_type"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Death rate per 1000 population. Data available from 2011 onwards."
+  }
+}

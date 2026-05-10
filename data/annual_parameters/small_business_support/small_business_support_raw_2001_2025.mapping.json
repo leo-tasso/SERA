@@ -1,0 +1,22 @@
+{
+  "parameter": "small_business_support",
+  "source": {
+    "provider": "World Bank",
+    "url": "https://api.worldbank.org/v2/country/IT/indicator/FD.AST.PRVT.GD.ZS",
+    "indicator_code": "FD.AST.PRVT.GD.ZS",
+    "indicator_name": "Domestic credit to private sector by banks (% of GDP)",
+    "columns": {
+      "countryiso3code": "area_code",
+      "date": "year",
+      "value": "small_business_support"
+    }
+  },
+  "project": {
+    "entity": "policy",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Annual proxy for SME/small-business financing support."
+  }
+}

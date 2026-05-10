@@ -1,0 +1,21 @@
+{
+  "indicator": "cultural_sites",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "60_195_DF_DCIS_MUSVIS_1",
+    "filters": {},
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "cultural_sites"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Proxy: number of museum institutions from ISTAT cultural survey data."
+  }
+}

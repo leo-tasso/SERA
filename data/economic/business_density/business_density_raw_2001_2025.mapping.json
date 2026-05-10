@@ -1,0 +1,21 @@
+{
+  "indicator": "business_density",
+  "source": {
+    "provider": "World Bank",
+    "url": "https://api.worldbank.org/v2/country/IT/indicator/IC.BUS.NDNS.ZS",
+    "indicator_code": "IC.BUS.NDNS.ZS",
+    "columns": {
+      "countryiso3code": "area_code",
+      "date": "year",
+      "value": "business_density"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "New business density (new registrations per 1,000 people ages 15-64)."
+  }
+}

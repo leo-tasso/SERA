@@ -1,0 +1,21 @@
+{
+  "indicator": "life_expectancy",
+  "source": {
+    "provider": "World Bank",
+    "url": "https://api.worldbank.org/v2/country/IT/indicator/SP.DYN.LE00.IN",
+    "indicator_code": "SP.DYN.LE00.IN",
+    "columns": {
+      "countryiso3code": "area_code",
+      "date": "year",
+      "value": "life_expectancy_years"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Life expectancy at birth, total (years)."
+  }
+}

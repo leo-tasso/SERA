@@ -1,0 +1,23 @@
+{
+  "indicator": "tax_revenue_per_capita",
+  "source": {
+    "provider": "World Bank",
+    "tax_url": "https://api.worldbank.org/v2/country/IT/indicator/GC.TAX.TOTL.GD.ZS",
+    "gdp_per_capita_url": "https://api.worldbank.org/v2/country/IT/indicator/NY.GDP.PCAP.CD",
+    "tax_indicator_code": "GC.TAX.TOTL.GD.ZS",
+    "gdp_per_capita_indicator_code": "NY.GDP.PCAP.CD",
+    "columns": {
+      "countryiso3code": "area_code",
+      "date": "year",
+      "value": "tax_revenue_per_capita_usd"
+    }
+  },
+  "project": {
+    "entity": "policy",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Tax revenue per capita proxy derived as tax revenue (% of GDP) * GDP per capita / 100."
+  }
+}

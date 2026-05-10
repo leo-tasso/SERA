@@ -1,0 +1,34 @@
+{
+  "indicator": "startups",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "183_203_DF_DICA_ACDP_20",
+    "filters": {
+      "DATA_TYPE": "AENTEMPYAA",
+      "LEGAL_FORM": "TOT",
+      "PERS_EMPL_SIZE_CLASS": "TOTAL",
+      "ECON_ACTIVITY_NACE_2007": "10",
+      "SEX": "9",
+      "AGE": "Y_GE15",
+      "COUNTRY_BIRTH": "WORLD"
+    },
+    "startup_age_bucket": "Y0-2",
+    "total_age_bucket": "TOTAL",
+    "columns": {
+      "REF_AREA": "area_code",
+      "AGE_ENTERPRISE": "age_enterprise",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "employees"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "province",
+      "region",
+      "national"
+    ],
+    "notes": "Startup proxy: employees in enterprises aged 0-2 over total employees in active enterprises."
+  }
+}

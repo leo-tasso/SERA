@@ -1,0 +1,24 @@
+{
+  "indicator": "public_transportation_usage",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "14_121_DF_DCCV_TRASPUB_1",
+    "filters": {
+      "DATA_TYPE": "DOM_TPUB",
+      "MEASURE": "14"
+    },
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "public_transportation_usage"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "ISTAT urban transport proxy series for public transit usage."
+  }
+}

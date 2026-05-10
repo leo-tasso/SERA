@@ -1,0 +1,22 @@
+{
+  "indicator": "urban_population_percentage",
+  "source": {
+    "provider": "World Bank",
+    "url": "https://api.worldbank.org/v2/country/IT/indicator/SP.URB.TOTL.IN.ZS",
+    "indicator_code": "SP.URB.TOTL.IN.ZS",
+    "indicator_name": "Urban population (% of total population)",
+    "columns": {
+      "countryiso3code": "area_code",
+      "date": "year",
+      "value": "urban_population_percentage"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Urban population percentage from World Bank."
+  }
+}

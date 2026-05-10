@@ -1,0 +1,22 @@
+{
+  "parameter": "education_spending_allocation",
+  "source": {
+    "provider": "World Bank",
+    "url": "https://api.worldbank.org/v2/country/IT/indicator/SE.XPD.TOTL.GB.ZS",
+    "indicator_code": "SE.XPD.TOTL.GB.ZS",
+    "indicator_name": "Government expenditure on education, total (% of government expenditure)",
+    "columns": {
+      "countryiso3code": "area_code",
+      "date": "year",
+      "value": "education_spending_allocation"
+    }
+  },
+  "project": {
+    "entity": "policy",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Annual proxy for education budget allocation."
+  }
+}

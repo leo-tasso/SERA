@@ -1,0 +1,22 @@
+{
+  "parameter": "infrastructure_investment_allocation",
+  "source": {
+    "provider": "World Bank",
+    "url": "https://api.worldbank.org/v2/country/IT/indicator/NE.GDI.FTOT.ZS",
+    "indicator_code": "NE.GDI.FTOT.ZS",
+    "indicator_name": "Gross fixed capital formation (% of GDP)",
+    "columns": {
+      "countryiso3code": "area_code",
+      "date": "year",
+      "value": "infrastructure_investment_allocation"
+    }
+  },
+  "project": {
+    "entity": "policy",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Annual proxy for infrastructure and capital investment allocation."
+  }
+}

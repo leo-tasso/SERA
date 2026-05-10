@@ -1,0 +1,24 @@
+{
+  "indicator": "construction_activity",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "115_362_DF_DCSC_INDXPRODCOSTR_1_1",
+    "filters": {
+      "DATA_TYPE": "CONS_PROD2",
+      "REF_AREA": "IT"
+    },
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "construction_production_index"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Annual average construction production index from monthly ISTAT series."
+  }
+}

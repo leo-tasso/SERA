@@ -1,0 +1,22 @@
+{
+  "indicator": "hospital_beds_available",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "43_967_DF_DCIS_OSPED_2",
+    "filters": {},
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "hospital_beds_available"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "national",
+      "regional"
+    ],
+    "notes": "Total hospital beds and activities by clinical specialization."
+  }
+}

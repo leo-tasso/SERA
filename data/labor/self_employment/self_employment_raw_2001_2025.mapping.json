@@ -1,0 +1,23 @@
+{
+  "indicator": "self_employment",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "150_938_DF_DCCV_OCCUPATIT1_23",
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "POSIZ_PROF": "professional_position",
+      "OBS_VALUE": "occupied_thousands"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "national",
+      "regional",
+      "territorial"
+    ],
+    "notes": "Self-employed workers as share of total employed. Computed from POSIZ_PROF dimensions. Regional and sub-regional data available (133 areas)."
+  }
+}

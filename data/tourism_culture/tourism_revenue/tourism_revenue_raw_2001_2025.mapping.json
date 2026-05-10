@@ -1,0 +1,22 @@
+{
+  "indicator": "tourism_revenue",
+  "source": {
+    "provider": "World Bank",
+    "url": "https://api.worldbank.org/v2/country/IT/indicator/ST.INT.RCPT.CD",
+    "indicator_code": "ST.INT.RCPT.CD",
+    "indicator_name": "International tourism receipts (current US$)",
+    "columns": {
+      "countryiso3code": "area_code",
+      "date": "year",
+      "value": "tourism_revenue"
+    }
+  },
+  "project": {
+    "entity": "policy",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "National proxy for international tourism revenue in USD."
+  }
+}

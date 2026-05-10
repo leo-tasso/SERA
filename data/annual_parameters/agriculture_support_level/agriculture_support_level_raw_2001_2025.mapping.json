@@ -1,0 +1,22 @@
+{
+  "parameter": "agriculture_support_level",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "101_148_DF_DCSP_RICAREA_1",
+    "dataset": "Economic results of farms - key data",
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "agriculture_support_level"
+    }
+  },
+  "project": {
+    "entity": "policy",
+    "code_field": "area_code",
+    "levels": [
+      "national",
+      "regional"
+    ],
+    "notes": "Annual proxy derived from ISTAT farm economic results."
+  }
+}

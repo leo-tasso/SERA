@@ -1,0 +1,22 @@
+{
+  "indicator": "museums_events",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "60_1004_DF_DCIS_MUSVIS_COM_1",
+    "filters": {},
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "museums_events"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "municipality",
+      "national"
+    ],
+    "notes": "Proxy: museum and cultural institution visitor counts from ISTAT commune-level data."
+  }
+}

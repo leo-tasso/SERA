@@ -1,0 +1,21 @@
+{
+  "indicator": "social_cohesion",
+  "source": {
+    "provider": "World Bank",
+    "url": "https://api.worldbank.org/v2/country/IT/indicator/SI.DST.FRST.20",
+    "indicator_code": "SI.DST.FRST.20",
+    "columns": {
+      "countryiso3code": "area_code",
+      "date": "year",
+      "value": "income_share_bottom_20_pct"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Social cohesion proxy: income share held by lowest 20% (higher suggests stronger cohesion)."
+  }
+}

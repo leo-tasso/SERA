@@ -1,0 +1,22 @@
+{
+  "parameter": "regulatory_burden_level",
+  "source": {
+    "provider": "World Bank",
+    "url": "https://api.worldbank.org/v2/country/IT/indicator/GOV_WGI_RQ.EST",
+    "indicator_code": "GOV_WGI_RQ.EST",
+    "indicator_name": "Regulatory Quality - Governance estimate (approx. -2.5 to +2.5)",
+    "columns": {
+      "countryiso3code": "area_code",
+      "date": "year",
+      "value": "regulatory_burden_level"
+    }
+  },
+  "project": {
+    "entity": "policy",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Annual proxy for regulatory burden/ease using governance regulatory-quality estimate."
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "parameter": "corporate_tax_rate",
+  "source": {
+    "provider": "World Bank",
+    "url": "https://api.worldbank.org/v2/country/IT/indicator/GC.TAX.YPKG.ZS",
+    "indicator_code": "GC.TAX.YPKG.ZS",
+    "indicator_name": "Taxes on income, profits and capital gains (% of total taxes)",
+    "columns": {
+      "countryiso3code": "area_code",
+      "date": "year",
+      "value": "corporate_tax_rate"
+    }
+  },
+  "project": {
+    "entity": "policy",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Annual proxy for corporate-tax policy pressure via direct-tax share in total taxes."
+  }
+}

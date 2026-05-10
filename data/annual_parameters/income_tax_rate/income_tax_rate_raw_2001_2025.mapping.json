@@ -1,0 +1,22 @@
+{
+  "parameter": "income_tax_rate",
+  "source": {
+    "provider": "World Bank",
+    "url": "https://api.worldbank.org/v2/country/IT/indicator/GC.TAX.YPKG.RV.ZS",
+    "indicator_code": "GC.TAX.YPKG.RV.ZS",
+    "indicator_name": "Taxes on income, profits and capital gains (% of revenue)",
+    "columns": {
+      "countryiso3code": "area_code",
+      "date": "year",
+      "value": "income_tax_rate"
+    }
+  },
+  "project": {
+    "entity": "policy",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Annual proxy for income-tax policy pressure (share of total government revenue from income/profits/capital-gains taxes)."
+  }
+}

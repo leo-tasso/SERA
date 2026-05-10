@@ -1,0 +1,47 @@
+{
+  "indicator": "stem_participation",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "56_1046_DF_DCIS_ISCRITTI_COM_R_3",
+    "filters": {
+      "DATA_TYPE": "16",
+      "SEX": "9",
+      "CITIZENSHIP": "TOTAL"
+    },
+    "stem_field_codes": [
+      "1",
+      "17",
+      "18",
+      "19",
+      "2",
+      "20",
+      "21",
+      "24",
+      "25",
+      "3",
+      "42",
+      "43",
+      "44",
+      "45",
+      "5"
+    ],
+    "total_field_code": "99",
+    "columns": {
+      "REF_AREA": "area_code",
+      "FIELD_STUDY": "field_study_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "enrolled_students"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "municipality",
+      "province",
+      "region",
+      "national"
+    ],
+    "notes": "STEM participation proxy = STEM enrolled / total enrolled in university fields, based on ISTAT field-of-study codelists."
+  }
+}

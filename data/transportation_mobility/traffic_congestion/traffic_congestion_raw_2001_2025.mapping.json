@@ -1,0 +1,26 @@
+{
+  "indicator": "traffic_congestion",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "82_87_DF_DCCV_AVQ_FAMIGLIE_104",
+    "filters": {
+      "DATA_TYPE": "HOUS_DIFF_TRANS_V",
+      "MEASURE": "HSC_F",
+      "NUMBER_HOUSEHOLD_COMP": "TOT"
+    },
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "traffic_congestion"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "region",
+      "national"
+    ],
+    "notes": "Proxy from households reporting road/transport difficulty due to congestion and mobility conditions."
+  }
+}

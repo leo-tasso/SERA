@@ -1,0 +1,22 @@
+{
+  "parameter": "immigration_policy_level",
+  "source": {
+    "provider": "World Bank",
+    "url": "https://api.worldbank.org/v2/country/IT/indicator/SM.POP.NETM",
+    "indicator_code": "SM.POP.NETM",
+    "indicator_name": "Net migration",
+    "columns": {
+      "countryiso3code": "area_code",
+      "date": "year",
+      "value": "immigration_policy_level"
+    }
+  },
+  "project": {
+    "entity": "policy",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Annual proxy for immigration policy openness through observed net migration."
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "indicator": "green_urban_space_per_capita",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "609_1_DF_DCCV_URBANENV_19",
+    "filters": {},
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "green_urban_space_per_capita"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "national",
+      "regional"
+    ],
+    "notes": "Green urban space availability/density from ISTAT urban environment data."
+  }
+}

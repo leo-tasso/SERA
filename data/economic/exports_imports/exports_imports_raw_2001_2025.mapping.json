@@ -1,0 +1,22 @@
+{
+  "indicator": "exports_imports",
+  "source": {
+    "dataflow_id": "139_176",
+    "key": "M.ITTOT..0010.WORLD",
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "time_period",
+      "DATA_TYPE": "data_type",
+      "OBS_VALUE": "value"
+    },
+    "aggregation": "Monthly ESAV/ISAV summed to annual exports/imports."
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Exports and imports values aggregated by year (WORLD partner, total goods)."
+  }
+}

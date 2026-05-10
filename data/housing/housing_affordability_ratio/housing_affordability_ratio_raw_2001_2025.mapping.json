@@ -1,0 +1,31 @@
+{
+  "indicator": "housing_affordability_ratio",
+  "source": {
+    "provider": "ISTAT",
+    "house_price_flow_id": "143_497",
+    "house_price_filters": {
+      "DATA_TYPE": "19",
+      "MEASURE": "4",
+      "PURCHASES_DWELLINGS": "ALL"
+    },
+    "income_source": {
+      "dataflow_id": "93_1095_DF_DCCN_ISTITUZ_TNA1_1",
+      "key": "A..B6N_B_W0.S14.Z.Z.V.S.N.2025M12"
+    },
+    "columns": {
+      "area_code": "area_code",
+      "year": "year",
+      "house_price_index": "house_price_index",
+      "income": "income",
+      "housing_affordability_ratio": "housing_affordability_ratio"
+    }
+  },
+  "project": {
+    "entity": "policy",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Proxy affordability ratio = house price index / household disposable income."
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "indicator": "youth_employment",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "150_915_DF_DCCV_TAXOCCU1_YOUTH_1",
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "youth_employment_rate"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "national",
+      "regional",
+      "territorial"
+    ],
+    "notes": "Youth employment rate (15-24 years). Regional and sub-regional disaggregation available (133 areas)."
+  }
+}

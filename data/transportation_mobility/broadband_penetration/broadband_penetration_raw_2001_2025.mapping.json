@@ -1,0 +1,26 @@
+{
+  "indicator": "broadband_penetration",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "60_130_DF_DCCV_ICT_1",
+    "filters": {
+      "DATA_TYPE": "FAM_CONN_BROAD",
+      "SEX": "9",
+      "AGE": "TOTAL",
+      "HOUSEHOLD_TYPOLOGY": "HH"
+    },
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "broadband_penetration"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Share of households with broadband connection."
+  }
+}

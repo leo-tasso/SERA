@@ -1,0 +1,22 @@
+{
+  "indicator": "unemployment_rate",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "151_929_DF_DCCV_DISOCCUPT1_5",
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "unemployment_count"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "national",
+      "regional",
+      "provincial"
+    ],
+    "notes": "Disoccupati (thousands). Regional disaggregation available."
+  }
+}

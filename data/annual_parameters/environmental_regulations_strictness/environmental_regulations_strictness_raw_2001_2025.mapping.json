@@ -1,0 +1,22 @@
+{
+  "parameter": "environmental_regulations_strictness",
+  "source": {
+    "provider": "World Bank",
+    "url": "https://api.worldbank.org/v2/country/IT/indicator/EN.ATM.PM25.MC.M3",
+    "indicator_code": "EN.ATM.PM25.MC.M3",
+    "indicator_name": "PM2.5 air pollution, mean annual exposure (micrograms per cubic meter)",
+    "columns": {
+      "countryiso3code": "area_code",
+      "date": "year",
+      "value": "environmental_regulations_strictness"
+    }
+  },
+  "project": {
+    "entity": "policy",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Annual proxy for environmental regulation outcomes/strictness."
+  }
+}

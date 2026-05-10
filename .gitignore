@@ -1,0 +1,5 @@
+Specs/**
+**/__pycache__/**
+**/*.egg-info/**
+dataBK/**
+**/agents/**

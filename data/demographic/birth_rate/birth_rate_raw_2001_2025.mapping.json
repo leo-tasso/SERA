@@ -1,0 +1,21 @@
+{
+  "indicator": "birth_rate",
+  "source": {
+    "dataflow_id": "25_74",
+    "key": "A.IT.LBIRTH.TOTAL.TOTAL.TOTAL.ALL.99.99.ALL.ALL.WORLD.ALL",
+    "columns": {
+      "FREQ": "frequency",
+      "RESIDENCE_TERR": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "births"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Live births (Nati vivi) - ISTAT dataflow 25_74. Currently available only at national level (IT). Data aggregated across all demographic dimensions (citizenship, age, marital status). Future updates may include province/region-level breakdown."
+  }
+}

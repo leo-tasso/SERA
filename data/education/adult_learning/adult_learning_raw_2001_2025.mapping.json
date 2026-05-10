@@ -1,0 +1,22 @@
+{
+  "indicator": "adult_learning",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "DF_DCSS_LCAS_FRISC_3",
+    "columns": {
+      "REF_AREA": "area_code",
+      "VOCAT_TRAIN_ATT": "vocational_training_attendance",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "value"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "province",
+      "municipality"
+    ],
+    "notes": "Adult learning proxy from vocational/professional training attendance in permanent census outputs."
+  }
+}

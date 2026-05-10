@@ -1,0 +1,41 @@
+{
+  "indicator": "completion_rates",
+  "source": {
+    "provider": "ISTAT",
+    "flow_ids": [
+      "52_1044_DF_DCIS_SCUOLE_11",
+      "52_1044_DF_DCIS_SCUOLE_14"
+    ],
+    "filters": {
+      "enrollment": {
+        "DATA_TYPE": "ENR",
+        "SEX": "T",
+        "CITIZENSHIP": "TOTAL",
+        "TYPE_SCHOOL_MANAGEMENT": "ALL",
+        "TYPE_SCHOOL": "ALL"
+      },
+      "graduates": {
+        "DATA_TYPE": "GRAD",
+        "SEX": "T",
+        "CITIZENSHIP": "TOTAL",
+        "TYPE_SCHOOL_MANAGEMENT": "ALL",
+        "TYPE_SCHOOL": "ALL"
+      }
+    },
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "value"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "province",
+      "region",
+      "national"
+    ],
+    "notes": "Completion proxy computed as graduates/enrolled * 100 for upper-secondary education."
+  }
+}

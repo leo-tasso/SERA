@@ -1,0 +1,23 @@
+{
+  "indicator": "public_spending_efficiency",
+  "source": {
+    "provider": "World Bank",
+    "url": "https://api.worldbank.org/v2/country/IT/indicator/NE.CON.GOVT.ZS",
+    "indicator_code": "NE.CON.GOVT.ZS",
+    "indicator_name": "General government final consumption expenditure (% of GDP)",
+    "proxy_note": "Used as a spending-intensity proxy because a stable ISTAT spending-efficiency series was not found.",
+    "columns": {
+      "countryiso3code": "area_code",
+      "date": "year",
+      "value": "public_spending_intensity_pct_gdp"
+    }
+  },
+  "project": {
+    "entity": "policy",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Proxy for public spending efficiency: general government final consumption expenditure (% of GDP)."
+  }
+}

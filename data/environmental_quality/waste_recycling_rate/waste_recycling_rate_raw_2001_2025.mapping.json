@@ -1,0 +1,22 @@
+{
+  "indicator": "waste_recycling_rate",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "609_1_DF_DCCV_URBANENV_22",
+    "filters": {},
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "waste_recycling_rate"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "national",
+      "regional"
+    ],
+    "notes": "Waste recycling/collection service rate from ISTAT urban environment data."
+  }
+}

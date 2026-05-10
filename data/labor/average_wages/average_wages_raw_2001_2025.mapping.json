@@ -1,0 +1,21 @@
+{
+  "indicator": "average_wages",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "533_957_DF_DCSC_RACLI_2",
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "hourly_wage_eur"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "national",
+      "macro-regional"
+    ],
+    "notes": "Hourly wage (euros). Macro-regional breakdown (6 areas: IT national + ITC, ITD, ITE, ITF, ITG macro-regions). Years 2014-2023."
+  }
+}

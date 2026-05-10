@@ -1,0 +1,22 @@
+{
+  "parameter": "green_energy_environment_investment",
+  "source": {
+    "provider": "World Bank",
+    "url": "https://api.worldbank.org/v2/country/IT/indicator/EG.FEC.RNEW.ZS",
+    "indicator_code": "EG.FEC.RNEW.ZS",
+    "indicator_name": "Renewable energy consumption (% of total final energy consumption)",
+    "columns": {
+      "countryiso3code": "area_code",
+      "date": "year",
+      "value": "green_energy_environment_investment"
+    }
+  },
+  "project": {
+    "entity": "policy",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Annual proxy for green-energy/environment investment orientation."
+  }
+}

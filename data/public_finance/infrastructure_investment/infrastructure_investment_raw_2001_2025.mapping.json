@@ -1,0 +1,22 @@
+{
+  "indicator": "infrastructure_investment",
+  "source": {
+    "provider": "World Bank",
+    "url": "https://api.worldbank.org/v2/country/IT/indicator/NE.GDI.FTOT.ZS",
+    "indicator_code": "NE.GDI.FTOT.ZS",
+    "indicator_name": "Gross fixed capital formation (% of GDP)",
+    "columns": {
+      "countryiso3code": "area_code",
+      "date": "year",
+      "value": "infrastructure_investment_pct_gdp"
+    }
+  },
+  "project": {
+    "entity": "policy",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Infrastructure investment proxy from gross fixed capital formation (% of GDP)."
+  }
+}

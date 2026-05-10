@@ -1,0 +1,26 @@
+{
+  "indicator": "population",
+  "source": {
+    "dataflow_id": "22_289_DF_DCIS_POPRES1_1",
+    "key": "A..JAN.1.TOTAL.1",
+    "columns": {
+      "REF_AREA": "area_code",
+      "FREQ": "frequency",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "population",
+      "SEX": "sex",
+      "AGE": "age_group",
+      "MARITAL_STATUS": "marital_status"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "province",
+      "region",
+      "national"
+    ],
+    "notes": "ISTAT area codes are kept as the project geography identifiers so each downloaded row stays aligned to the SERA spatial entities."
+  }
+}

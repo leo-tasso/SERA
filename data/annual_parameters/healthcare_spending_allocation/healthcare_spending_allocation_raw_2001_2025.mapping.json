@@ -1,0 +1,21 @@
+{
+  "parameter": "healthcare_spending_allocation",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "1_963_DF_DCCN_SHA_B19_1",
+    "dataset": "Health expenditure by health care function and financing scheme",
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "healthcare_spending_allocation"
+    }
+  },
+  "project": {
+    "entity": "policy",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Annual proxy derived from ISTAT health expenditure data."
+  }
+}

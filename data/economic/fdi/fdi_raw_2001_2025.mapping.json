@@ -1,0 +1,21 @@
+{
+  "indicator": "fdi",
+  "source": {
+    "provider": "World Bank",
+    "url": "https://api.worldbank.org/v2/country/IT/indicator/BX.KLT.DINV.CD.WD",
+    "indicator_code": "BX.KLT.DINV.CD.WD",
+    "columns": {
+      "countryiso3code": "area_code",
+      "date": "year",
+      "value": "fdi_inflows_usd"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Foreign direct investment, net inflows (BoP, current US$)."
+  }
+}

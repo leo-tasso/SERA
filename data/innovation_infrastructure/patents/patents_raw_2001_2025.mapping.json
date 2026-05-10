@@ -1,0 +1,27 @@
+{
+  "indicator": "patents",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "DF_BES_TERRIT_11",
+    "filters": {
+      "DOMAIN": "BES_11",
+      "DATA_TYPE": "11RIC002",
+      "SEX": "T"
+    },
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "patent_propensity"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "province",
+      "region",
+      "national"
+    ],
+    "notes": "BES 'propensione alla brevettazione' (patent propensity)."
+  }
+}

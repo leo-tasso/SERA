@@ -1,0 +1,27 @@
+{
+  "indicator": "air_quality",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "DF_BES_TERRIT_10",
+    "filters": {
+      "DOMAIN": "BES_10",
+      "DATA_TYPE": "10AMB001P",
+      "SEX": "T"
+    },
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "pm10_annual_avg"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "province",
+      "region",
+      "national"
+    ],
+    "notes": "Air quality proxy from BES: annual average PM10 concentration."
+  }
+}

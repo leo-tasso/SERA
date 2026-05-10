@@ -1,0 +1,22 @@
+{
+  "indicator": "healthcare_worker_density",
+  "source": {
+    "provider": "ISTAT",
+    "flow_id": "43_973_DF_DCIS_PERS_SANIT_1",
+    "filters": {},
+    "columns": {
+      "REF_AREA": "area_code",
+      "TIME_PERIOD": "year",
+      "OBS_VALUE": "healthcare_worker_density"
+    }
+  },
+  "project": {
+    "entity": "geography",
+    "code_field": "area_code",
+    "levels": [
+      "national",
+      "regional"
+    ],
+    "notes": "Healthcare worker counts by category (doctors, nurses, technicians, etc.)."
+  }
+}

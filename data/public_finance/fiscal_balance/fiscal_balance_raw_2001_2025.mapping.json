@@ -1,0 +1,22 @@
+{
+  "indicator": "fiscal_balance",
+  "source": {
+    "provider": "World Bank",
+    "url": "https://api.worldbank.org/v2/country/IT/indicator/GC.NLD.TOTL.GD.ZS",
+    "indicator_code": "GC.NLD.TOTL.GD.ZS",
+    "indicator_name": "Net lending/borrowing (% of GDP)",
+    "columns": {
+      "countryiso3code": "area_code",
+      "date": "year",
+      "value": "fiscal_balance_pct_gdp"
+    }
+  },
+  "project": {
+    "entity": "policy",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Fiscal balance proxy from World Bank net lending/borrowing (% of GDP)."
+  }
+}

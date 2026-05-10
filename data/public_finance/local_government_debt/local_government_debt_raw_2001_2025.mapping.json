@@ -1,0 +1,23 @@
+{
+  "indicator": "local_government_debt",
+  "source": {
+    "provider": "World Bank",
+    "url": "https://api.worldbank.org/v2/country/IT/indicator/GC.DOD.TOTL.GD.ZS",
+    "indicator_code": "GC.DOD.TOTL.GD.ZS",
+    "indicator_name": "Central government debt, total (% of GDP)",
+    "proxy_note": "Used as a national proxy because a stable ISTAT local-government debt series was not found.",
+    "columns": {
+      "countryiso3code": "area_code",
+      "date": "year",
+      "value": "local_government_debt_pct_gdp"
+    }
+  },
+  "project": {
+    "entity": "policy",
+    "code_field": "area_code",
+    "levels": [
+      "national"
+    ],
+    "notes": "Proxy for local government debt: central government debt (% of GDP)."
+  }
+}
