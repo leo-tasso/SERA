@@ -4,3 +4,4 @@ Specs/**
 dataBK/**
 **/agents/**
 .vscode/**
+**/node_modules/**
