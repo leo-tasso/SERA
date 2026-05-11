@@ -3,3 +3,4 @@ Specs/**
 **/*.egg-info/**
 dataBK/**
 **/agents/**
+.vscode/**

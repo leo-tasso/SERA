@@ -1,0 +1,53 @@
+================================================================================
+MULTI-HORIZON SIMULATION VALIDATION TEST
+================================================================================
+Training models with provincial indicators from downloader tracker...
+Loading data for 55 indicators and 20 parameters...
+Error during training: 'area_code'
+Falling back to minimal indicator set...
+Traceback (most recent call last):
+  File "C:\Users\Leonardo\Desktop\SERA\test_multi_horizon.py", line 566, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "C:\Users\Leonardo\Desktop\SERA\test_multi_horizon.py", line 446, in main
+    initial_state = load_initial_state(2025)
+  File "C:\Users\Leonardo\Desktop\SERA\test_multi_horizon.py", line 251, in load_initial_state
+    df = df.pivot_table(
+         ~~~~~~~~~~~~~~^
+        index="area_code", values="value", aggfunc="mean"
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ).reset_index()
+    ^
+  File "C:\Users\Leonardo\AppData\Roaming\Python\Python313\site-packages\pandas\core\frame.py", line 9536, in pivot_table
+    return pivot_table(
+        self,
+    ...<9 lines>...
+        sort=sort,
+    )
+  File "C:\Users\Leonardo\AppData\Roaming\Python\Python313\site-packages\pandas\core\reshape\pivot.py", line 102, in pivot_table
+    table = __internal_pivot_table(
+        data,
+    ...<9 lines>...
+        sort,
+    )
+  File "C:\Users\Leonardo\AppData\Roaming\Python\Python313\site-packages\pandas\core\reshape\pivot.py", line 172, in __internal_pivot_table
+    grouped = data.groupby(keys, observed=observed_bool, sort=sort, dropna=dropna)
+  File "C:\Users\Leonardo\AppData\Roaming\Python\Python313\site-packages\pandas\core\frame.py", line 9210, in groupby
+    return DataFrameGroupBy(
+        obj=self,
+    ...<7 lines>...
+        dropna=dropna,
+    )
+  File "C:\Users\Leonardo\AppData\Roaming\Python\Python313\site-packages\pandas\core\groupby\groupby.py", line 1331, in __init__
+    grouper, exclusions, obj = get_grouper(
+                               ~~~~~~~~~~~^
+        obj,
+        ^^^^
+    ...<5 lines>...
+        dropna=self.dropna,
+        ^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Leonardo\AppData\Roaming\Python\Python313\site-packages\pandas\core\groupby\grouper.py", line 1043, in get_grouper
+    raise KeyError(gpr)
+KeyError: 'area_code'
