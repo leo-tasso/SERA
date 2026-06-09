@@ -209,6 +209,10 @@ function hasValue(value) {
   return value !== null && value !== undefined
 }
 
+// Stable fallback so effects depending on the per-province cache entry do not
+// re-run on every render while the entry is still missing.
+const EMPTY_PROVINCE_CACHE = { rows: [], keysLoaded: [] }
+
 function computeResourceBudget(allocations, parameterMeta, latestStateRows, spendingIntensityPct, reservePool) {
   const spendingMeta = parameterMeta.filter((p) => SPENDING_PARAMS.has(p.key))
   const numSpending = spendingMeta.length
@@ -226,7 +230,7 @@ function computeResourceBudget(allocations, parameterMeta, latestStateRows, spen
     const ratioSum = numSpending > 0
       ? spendingMeta.reduce((sum, pm) => {
           const val = hasValue(provinceAllocs[pm.key]) ? provinceAllocs[pm.key] : pm.baseline
-          return sum + Number(val) / Math.max(Number(pm.baseline), 1)
+          return sum + Number(val) / Math.max(Number(pm.baseline), 1e-9)
         }, 0)
       : 0
     const avgRatio = numSpending > 0 ? ratioSum / numSpending : 0
@@ -342,6 +346,24 @@ function ResourceMeter({ used, limit, label, reserve }) {
   )
 }
 
+function RunProgress({ progress }) {
+  if (!progress) {
+    return null
+  }
+  const percent = Math.min(Math.max(Number(progress.percent) || 0, 0), 100)
+  return (
+    <div className="run-progress">
+      <div className="resource-meter-header">
+        <span className="resource-meter-label">{progress.message || 'Working...'}</span>
+        <span className="resource-meter-pct">{percent.toFixed(0)}%</span>
+      </div>
+      <div className="resource-meter-track">
+        <div className="resource-meter-fill run-progress-fill" style={{ width: `${percent}%` }} />
+      </div>
+    </div>
+  )
+}
+
 function TrendChart({ provinceName, provinceCode, rows, indicatorKeys, simulationStartYear }) {
   const canvasRef = useRef(null)
   const chartRef = useRef(null)
@@ -447,6 +469,86 @@ function TrendChart({ provinceName, provinceCode, rows, indicatorKeys, simulatio
   )
 }
 
+function GdpTrajectoryChart({ baselineSeries, optimizedSeries, modelLabel }) {
+  const canvasRef = useRef(null)
+  const chartRef = useRef(null)
+
+  useEffect(() => {
+    if (!canvasRef.current || !optimizedSeries || !optimizedSeries.length) {
+      return undefined
+    }
+
+    const labels = optimizedSeries.map((point) => point.year)
+    const datasets = [
+      {
+        label: `${modelLabel} (optimized)`,
+        data: optimizedSeries.map((point) => point.value),
+        borderColor: '#0f766e',
+        backgroundColor: '#0f766e22',
+        borderWidth: 2.4,
+        pointRadius: 2,
+        tension: 0.28,
+      },
+    ]
+    if (baselineSeries && baselineSeries.length) {
+      datasets.push({
+        label: 'Baseline (historical levers)',
+        data: baselineSeries.map((point) => point.value),
+        borderColor: '#94a3b8',
+        backgroundColor: '#94a3b822',
+        borderWidth: 2,
+        borderDash: [6, 4],
+        pointRadius: 0,
+        tension: 0.28,
+      })
+    }
+
+    if (chartRef.current) {
+      chartRef.current.destroy()
+    }
+
+    chartRef.current = new Chart(canvasRef.current, {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'bottom' },
+          title: {
+            display: true,
+            text: 'National total GDP trajectory',
+            color: '#102038',
+            font: { size: 15, weight: '700' },
+          },
+        },
+        scales: {
+          x: { ticks: { color: '#5b6f89' }, grid: { color: 'rgba(16, 32, 56, 0.06)' } },
+          y: { ticks: { color: '#5b6f89' }, grid: { color: 'rgba(16, 32, 56, 0.08)' } },
+        },
+      },
+    })
+
+    return () => {
+      if (chartRef.current) {
+        chartRef.current.destroy()
+        chartRef.current = null
+      }
+    }
+  }, [baselineSeries, optimizedSeries, modelLabel])
+
+  if (!optimizedSeries || !optimizedSeries.length) {
+    return <div className="empty-state">Run a model to see the projected national GDP trajectory.</div>
+  }
+
+  return (
+    <div className="chart-canvas" style={{ height: 360 }}>
+      <canvas ref={canvasRef} />
+    </div>
+  )
+}
+
 const IndicatorMap = React.memo(function IndicatorMap({ features, latestStateRows, indicatorKey, selectedProvince, onSelectProvince }) {
   const projection = useMemo(() => buildProjection(features, MAP_WIDTH, MAP_HEIGHT, 26), [features])
 
@@ -538,10 +640,26 @@ function App() {
   const [isLoadingTrends, setIsLoadingTrends] = useState(false)
   const [spendingIntensityPct, setSpendingIntensityPct] = useState(19.0)
   const [reservePool, setReservePool] = useState(0)
+  const [models, setModels] = useState([])
+  const [provinces, setProvinces] = useState([])
+  const [selectedModel, setSelectedModel] = useState('gdp_nn')
+  const [optimizeHorizon, setOptimizeHorizon] = useState(20)
+  const [optimizeIterations, setOptimizeIterations] = useState(8)
+  const [isOptimizing, setIsOptimizing] = useState(false)
+  const [optimizeResult, setOptimizeResult] = useState(null)
+  const [runProgress, setRunProgress] = useState(null)
+  const trendRequestsRef = useRef(new Set())
 
   useEffect(() => {
     const unsubscribe = window.seraApi.onSimulationLog((message) => {
       setSimulationLog((currentValue) => `${currentValue}${message}`)
+    })
+    return unsubscribe
+  }, [])
+
+  useEffect(() => {
+    const unsubscribe = window.seraApi.onSimulationProgress((progress) => {
+      setRunProgress(progress)
     })
     return unsubscribe
   }, [])
@@ -569,6 +687,12 @@ function App() {
         setCurrentYear(bootstrap.baselineYear)
         setBaselineYear(bootstrap.baselineYear)
         setSpendingIntensityPct(Number(bootstrap.spendingIntensityPct) || 19.0)
+        setModels(bootstrap.models || [])
+        setProvinces(bootstrap.provinces || [])
+        if ((bootstrap.models || []).length) {
+          const trainable = bootstrap.models.find((model) => model.trainable) || bootstrap.models[0]
+          setSelectedModel(trainable.id)
+        }
 
         const firstFeature = (mapData.features || [])[0]
         const firstProvince = (firstFeature && firstFeature.properties && firstFeature.properties.prov_acr)
@@ -602,7 +726,7 @@ function App() {
   }, [features])
 
   const currentProvinceFeature = selectedProvince ? featureByProvince[selectedProvince] : null
-  const selectedProvinceCache = provinceHistoryCache[selectedProvince] || { rows: [], keysLoaded: [] }
+  const selectedProvinceCache = provinceHistoryCache[selectedProvince] || EMPTY_PROVINCE_CACHE
   const historicalProvinceRows = selectedProvinceCache.rows || []
   const currentProvinceRows = useMemo(
     () => mergeHistoryRows(historicalProvinceRows, buildProvinceHistory(simulationRows, selectedProvince)),
@@ -642,6 +766,14 @@ function App() {
         return
       }
 
+      // Each bridge call spawns a Python process; skip if this exact request
+      // is already in flight (e.g. the effect re-ran mid-fetch).
+      const requestKey = `${selectedProvince}:${missingKeys.join(',')}`
+      if (trendRequestsRef.current.has(requestKey)) {
+        return
+      }
+      trendRequestsRef.current.add(requestKey)
+
       try {
         setIsLoadingTrends(true)
         const response = await window.seraApi.loadProvinceTrends({
@@ -670,6 +802,7 @@ function App() {
           setError(trendError.message || String(trendError))
         }
       } finally {
+        trendRequestsRef.current.delete(requestKey)
         if (active) {
           setIsLoadingTrends(false)
         }
@@ -705,6 +838,7 @@ function App() {
     try {
       setIsSimulating(true)
       setSimulationLog('')
+      setRunProgress({ percent: 0, message: 'Starting simulation...' })
       const response = await window.seraApi.simulateNextYear({
         currentYear,
         currentStateRows: latestStateRows,
@@ -717,13 +851,57 @@ function App() {
       setSimulationRows((currentValue) => [...currentValue, ...(response.nextStateRows || [])])
       setSummary(response.summary || null)
       setCurrentYear(response.nextYear)
-      const yearlyBudget = resourceBudget.totalBasePool
-      const yearlyUsed = Math.min(resourceBudget.totalUsed, resourceBudget.totalPool)
-      setReservePool((prev) => Math.max(0, prev + yearlyBudget - yearlyUsed))
+      if (hasValue(response.reservePool)) {
+        setReservePool(Math.max(0, Number(response.reservePool) || 0))
+      }
     } catch (simulationError) {
       setError(simulationError.message || String(simulationError))
     } finally {
       setIsSimulating(false)
+      setRunProgress(null)
+    }
+  }
+
+  async function runModel() {
+    try {
+      setIsOptimizing(true)
+      setSimulationLog('')
+      setOptimizeResult(null)
+      setRunProgress({ percent: 0, message: 'Starting policy run...' })
+      const response = await window.seraApi.optimizePolicy({
+        currentYear,
+        currentStateRows: latestStateRows,
+        modelId: selectedModel,
+        horizon: optimizeHorizon,
+        iterations: optimizeIterations,
+        spendingIntensityPct,
+        reservePool,
+      })
+
+      const trajectoryRows = response.trajectoryRows || []
+      const finalRows = trajectoryRows.filter((row) => Number(row.year) === Number(response.finalYear))
+
+      setSimulationRows(trajectoryRows)
+      if (finalRows.length) {
+        setLatestStateRows(finalRows)
+      }
+      setCurrentYear(response.finalYear)
+
+      const finalAllocations = response.finalAllocations
+      if (finalAllocations && Object.keys(finalAllocations).length) {
+        setAllocations((prev) => ({ ...prev, ...finalAllocations }))
+      }
+
+      if (hasValue(response.reservePool)) {
+        setReservePool(Math.max(0, Number(response.reservePool) || 0))
+      }
+      setSummary(response.summary || null)
+      setOptimizeResult(response)
+    } catch (modelError) {
+      setError(modelError.message || String(modelError))
+    } finally {
+      setIsOptimizing(false)
+      setRunProgress(null)
     }
   }
 
@@ -785,9 +963,56 @@ function App() {
                   : 'Select a province on the map.'}
               </p>
             </div>
-            <button className="primary-button" onClick={runSimulation} disabled={isSimulating || !latestStateRows.length}>
+            <button className="primary-button" onClick={runSimulation} disabled={isSimulating || isOptimizing || !latestStateRows.length}>
               {isSimulating ? 'Running simulation...' : `Simulate ${Number(currentYear) + 1}`}
             </button>
+            {isSimulating && <RunProgress progress={runProgress} />}
+
+            <div className="model-studio">
+              <p className="control-label">AI policy model</p>
+              <select
+                className="indicator-select model-select"
+                value={selectedModel}
+                onChange={(event) => setSelectedModel(event.target.value)}
+                disabled={isOptimizing}
+              >
+                {models.map((model) => (
+                  <option key={model.id} value={model.id}>{model.label}</option>
+                ))}
+              </select>
+              {(() => {
+                const meta = models.find((model) => model.id === selectedModel)
+                return meta ? <p className="control-text model-desc">{meta.description}</p> : null
+              })()}
+              <div className="model-inputs">
+                <label className="model-field">
+                  <span>Horizon (years)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={optimizeHorizon}
+                    disabled={isOptimizing}
+                    onChange={(event) => setOptimizeHorizon(clamp(Number(event.target.value) || 1, 1, 50))}
+                  />
+                </label>
+                <label className="model-field">
+                  <span>Training rounds</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={40}
+                    value={optimizeIterations}
+                    disabled={isOptimizing}
+                    onChange={(event) => setOptimizeIterations(clamp(Number(event.target.value) || 1, 1, 40))}
+                  />
+                </label>
+              </div>
+              <button className="primary-button" onClick={runModel} disabled={isOptimizing || isSimulating || !latestStateRows.length}>
+                {isOptimizing ? 'Optimizing…' : `Maximize GDP over ${optimizeHorizon}y`}
+              </button>
+              {isOptimizing && <RunProgress progress={runProgress} />}
+            </div>
           </div>
         </div>
       </section>
@@ -921,6 +1146,28 @@ function App() {
             />
           </div>
         </div>
+      </section>
+
+      <section className="chart-panel">
+        <h2>AI policy studio</h2>
+        <p className="chart-subtitle">
+          The selected model drives the twin forward over the chosen horizon, picking province-specific policy levers to maximize total national GDP. The dashed line is the baseline (historical levers) scenario for comparison.
+        </p>
+        {optimizeResult && optimizeResult.trainInfo && optimizeResult.trainInfo.improvement_pct != null ? (
+          <div className="empty-state" style={{ marginBottom: 12 }}>
+            <strong>{(models.find((m) => m.id === optimizeResult.modelId) || {}).label || optimizeResult.modelId}:</strong>{' '}
+            optimized cumulative national GDP through {optimizeResult.finalYear}
+            {optimizeResult.trainInfo.best_score != null
+              ? ` = ${formatNumber(optimizeResult.trainInfo.best_score)}`
+              : ''}
+            {' '}(training lift {formatNumber(optimizeResult.trainInfo.improvement_pct)}% over the network's first guess).
+          </div>
+        ) : null}
+        <GdpTrajectoryChart
+          baselineSeries={optimizeResult && optimizeResult.baselineGdpByYear}
+          optimizedSeries={optimizeResult && optimizeResult.optimizedGdpByYear}
+          modelLabel={(models.find((m) => m.id === (optimizeResult && optimizeResult.modelId)) || {}).label || 'Model'}
+        />
       </section>
 
       <section className="log-panel">

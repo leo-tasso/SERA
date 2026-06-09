@@ -213,10 +213,13 @@ class TestSimulator:
             "income": [50000],
         })
 
-        # Tax rate of 70 (higher than neutral 50) should decrease income
+        # A tax rate well above the historical baseline should decrease income.
+        # Derive it from the reference so the test does not depend on the
+        # absolute scale of the data files.
+        baseline, scale = get_parameter_reference("income_tax_rate")
         parameters = pd.DataFrame({
             "area_code": ["IT001"],
-            "income_tax_rate": [70],
+            "income_tax_rate": [baseline + 2 * scale],
         })
 
         lagged = pd.DataFrame({
@@ -260,6 +263,59 @@ class TestSimulator:
         result = simulator.simulate_year(current_state, parameters_year)
 
         assert result["poverty_rate"].iloc[0] <= 100
+
+
+class TestParameterAlignment:
+    """Parameter rows must be matched to provinces by area_code, not position."""
+
+    @staticmethod
+    def _make_simulator():
+        trainer = ModelTrainer()  # no trained models: predictions fall back to lag
+        return DigitalTwinSimulator(
+            trainer,
+            indicators=["income"],
+            parameters=["income_tax_rate"],
+        )
+
+    @staticmethod
+    def _make_state():
+        return pd.DataFrame({
+            "area_code": ["AA", "BB", "CC"],
+            "year": [2025] * 3,
+            "income": [100.0, 200.0, 300.0],
+        })
+
+    def test_shuffled_parameter_rows_give_identical_results(self):
+        simulator = self._make_simulator()
+        baseline, scale = get_parameter_reference("income_tax_rate")
+
+        ordered = pd.DataFrame({
+            "area_code": ["AA", "BB", "CC"],
+            "year": [2026] * 3,
+            "income_tax_rate": [baseline, baseline + 2 * scale, baseline],
+        })
+        shuffled = ordered.iloc[[2, 0, 1]].reset_index(drop=True)
+
+        result_ordered = simulator.simulate_year(self._make_state(), ordered)
+        result_shuffled = simulator.simulate_year(self._make_state(), shuffled)
+
+        pd.testing.assert_frame_equal(result_ordered, result_shuffled)
+
+    def test_missing_province_falls_back_to_baseline_levers(self):
+        simulator = self._make_simulator()
+        baseline, _scale = get_parameter_reference("income_tax_rate")
+
+        explicit_baseline = pd.DataFrame({
+            "area_code": ["AA", "BB", "CC"],
+            "year": [2026] * 3,
+            "income_tax_rate": [baseline] * 3,
+        })
+        missing_bb = explicit_baseline[explicit_baseline["area_code"] != "BB"].copy()
+
+        result_full = simulator.simulate_year(self._make_state(), explicit_baseline)
+        result_missing = simulator.simulate_year(self._make_state(), missing_bb)
+
+        pd.testing.assert_frame_equal(result_full, result_missing)
 
 
 class TestIntegration:

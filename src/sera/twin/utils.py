@@ -21,15 +21,19 @@ class SimulationExporter:
         data = []
         for _, row in results.iterrows():
             row_dict = row.to_dict()
-            # Convert numpy types to Python types for JSON serialization
-            row_dict = {
-                k: float(v) if isinstance(v, (np.floating, np.integer)) else v
-                for k, v in row_dict.items()
-            }
-            data.append(row_dict)
-        
+            # Convert numpy types to Python types and NaN to null: json.dump
+            # would otherwise emit a bare NaN token, which is not valid JSON.
+            sanitized = {}
+            for k, v in row_dict.items():
+                if isinstance(v, (np.floating, np.integer)):
+                    v = v.item()
+                if isinstance(v, float) and np.isnan(v):
+                    v = None
+                sanitized[k] = v
+            data.append(sanitized)
+
         with open(output_path, "w") as f:
-            json.dump(data, f, indent=2)
+            json.dump(data, f, indent=2, allow_nan=False)
 
     @staticmethod
     def to_excel(results: pd.DataFrame, output_path: Path) -> None:
@@ -178,18 +182,39 @@ class AnalysisTools:
         parameter_changes: Dict[str, Tuple[float, float]],
         indicator: str,
     ) -> Dict[str, float]:
-        """Analyze impact of parameter changes on an indicator.
-        
+        """Measure how an indicator moved after each parameter change.
+
         Args:
-            results: Simulation results
-            parameter_changes: Dict of {param: (before_year, after_year, year_to_measure)}
+            results: Simulation results (area_code, year, indicator columns)
+            parameter_changes: Dict of {param_name: (from_year, new_value)},
+                the same shape ScenarioBuilder.create_variant accepts
             indicator: Indicator to measure impact on
-            
+
         Returns:
-            Dict with impact metrics
+            Dict with, per changed parameter, the indicator mean before and
+            after the change year, plus the absolute and percent shift.
         """
-        # This would correlate parameter changes with indicator changes
-        return {}
+        if indicator not in results.columns:
+            return {}
+
+        metrics: Dict[str, float] = {}
+        for param, (from_year, _new_value) in parameter_changes.items():
+            before = results[results["year"] < from_year][indicator].dropna()
+            after = results[results["year"] >= from_year][indicator].dropna()
+            if before.empty or after.empty:
+                continue
+
+            before_mean = float(before.mean())
+            after_mean = float(after.mean())
+            metrics[f"{param}_before_mean"] = before_mean
+            metrics[f"{param}_after_mean"] = after_mean
+            metrics[f"{param}_absolute_change"] = after_mean - before_mean
+            metrics[f"{param}_percent_change"] = float(
+                (after_mean - before_mean) / abs(before_mean) * 100
+                if before_mean != 0
+                else 0.0
+            )
+        return metrics
 
     @staticmethod
     def provincial_inequality(

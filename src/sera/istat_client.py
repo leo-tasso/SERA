@@ -1,5 +1,6 @@
 """ISTAT SDMX API client with rate limiting."""
 
+import re
 import time
 from typing import Optional, Dict, Any
 from datetime import datetime
@@ -35,13 +36,25 @@ class IstatClient:
             delay = self.min_delay - elapsed
             time.sleep(delay)
 
-    def _get_cache_path(self, flow_id: str, year_start: Optional[int] = None, year_end: Optional[int] = None) -> Path:
-        """Generate cache file path for a dataflow query."""
+    def _get_cache_path(
+        self,
+        flow_id: str,
+        key: str = "",
+        year_start: Optional[int] = None,
+        year_end: Optional[int] = None,
+    ) -> Optional[Path]:
+        """Generate cache file path for a dataflow query.
+
+        The dimensional ``key`` must be part of the file name: different keys on
+        the same dataflow return different data (e.g. population totals vs. the
+        age breakdown on 22_289_DF_DCIS_POPRES1_1) and would otherwise collide.
+        """
         if not self.cache_dir:
             return None
-        
+
+        key_part = f"_{re.sub(r'[^A-Za-z0-9._-]', '_', key)}" if key else ""
         suffix = f"_{year_start}_{year_end}" if year_start and year_end else ""
-        cache_file = f"{flow_id}{suffix}.csv"
+        cache_file = f"{flow_id}{key_part}{suffix}.csv"
         return self.cache_dir / cache_file
 
     def _get_from_cache(self, cache_path: Path) -> Optional[str]:
@@ -82,7 +95,7 @@ class IstatClient:
             requests.HTTPError: If API request fails.
         """
         # Check cache first
-        cache_path = self._get_cache_path(flow_id, start_year, end_year)
+        cache_path = self._get_cache_path(flow_id, key, start_year, end_year)
         cached_data = self._get_from_cache(cache_path)
         if cached_data:
             return cached_data
@@ -110,13 +123,16 @@ class IstatClient:
             # NOTE: ISTAT has a bug where endPeriod returns year+1, so we subtract 1
             params["endPeriod"] = str(end_year - 1)
 
-        # Execute request
-        response = self.session.get(url, headers=headers, params=params, timeout=300)
-        response.raise_for_status()
+        # Execute request. The request timestamp is recorded even on failure so
+        # that retrying a failing call still respects the API rate limit.
+        try:
+            response = self.session.get(url, headers=headers, params=params, timeout=300)
+            response.raise_for_status()
+        finally:
+            self.last_request_time = time.time()
 
         data = response.text
         self._save_to_cache(cache_path, data)
-        self.last_request_time = time.time()
 
         return data
 
@@ -135,8 +151,10 @@ class IstatClient:
         self._enforce_rate_limit()
 
         url = f"{self.base_url}/dataflow/{agency_id}"
-        response = self.session.get(url, timeout=300)
-        response.raise_for_status()
+        try:
+            response = self.session.get(url, timeout=300)
+            response.raise_for_status()
+        finally:
+            self.last_request_time = time.time()
 
-        self.last_request_time = time.time()
         return response.text

@@ -41,12 +41,14 @@ class DataLoader:
         """
         pattern = f"{indicator_name}_raw_*.csv"
         file_path = self.data_dir / category / indicator_name
-        
-        matching_files = list(file_path.glob(pattern))
+
+        # Sort so the pick is deterministic when several raw files exist
+        # (glob order is OS-dependent); matches get_parameter_reference.
+        matching_files = sorted(file_path.glob(pattern))
         if not matching_files:
             logger.warning(f"No data found for {indicator_name} in {category}")
             return pd.DataFrame()
-        
+
         # Preserve area_code as text to avoid losing leading zeros in ISTAT-style codes.
         df = pd.read_csv(matching_files[0], dtype={"area_code": str})
         

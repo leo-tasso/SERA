@@ -1,13 +1,14 @@
 const { app, BrowserWindow, ipcMain } = require('electron')
 const fs = require('fs')
 const path = require('path')
-const { spawn, spawnSync } = require('child_process')
+const { spawn } = require('child_process')
 
 const REPO_ROOT = path.resolve(__dirname, '..')
 const BRIDGE_PATH = path.join(__dirname, 'backend_bridge.py')
+const PROGRESS_PREFIX = '@@PROGRESS@@'
 const DEFAULT_MAP_PATHS = [
+  path.join(__dirname, 'province_provinces.geojson'),
   path.join(process.env.USERPROFILE || 'C:\\Users\\Leonardo', 'Downloads', 'SERA', 'ui', 'province_provinces.geojson'),
-  'C:\\Users\\Leonardo\\Downloads\\SERA\\ui\\province_provinces.geojson',
 ]
 
 function getPythonExecutable() {
@@ -34,7 +35,7 @@ function resolveMapPath() {
   }
 
   throw new Error(
-    'Province GeoJSON not found. Expected it at C:\\Users\\Leonardo\\Downloads\\SERA\\ui\\province_provinces.geojson.',
+    `Province GeoJSON not found. Expected it at ${DEFAULT_MAP_PATHS[0]}.`,
   )
 }
 
@@ -50,21 +51,6 @@ function parseBridgeOutput(stdout, stderr, status) {
   }
 }
 
-function runBridgeSync(command, payload) {
-  const result = spawnSync(getPythonExecutable(), [BRIDGE_PATH, command], {
-    cwd: REPO_ROOT,
-    encoding: 'utf8',
-    input: JSON.stringify(payload || {}),
-    maxBuffer: 64 * 1024 * 1024,
-  })
-
-  if (result.error) {
-    throw result.error
-  }
-
-  return parseBridgeOutput(result.stdout, result.stderr, result.status)
-}
-
 function runBridgeAsync(command, payload, webContents) {
   return new Promise((resolve, reject) => {
     const proc = spawn(getPythonExecutable(), [BRIDGE_PATH, command], {
@@ -74,21 +60,44 @@ function runBridgeAsync(command, payload, webContents) {
 
     let stdout = ''
     let stderr = ''
+    let stderrBuffer = ''
 
     proc.stdout.on('data', (chunk) => {
       stdout += chunk.toString()
     })
 
-    proc.stderr.on('data', (chunk) => {
-      const text = chunk.toString()
-      stderr += text
+    const sendToRenderer = (channel, payload) => {
       if (webContents && !webContents.isDestroyed()) {
-        webContents.send('ui:simulation-log', text)
+        webContents.send(channel, payload)
       }
+    }
+
+    const consumeStderrLine = (line) => {
+      if (line.startsWith(PROGRESS_PREFIX)) {
+        try {
+          sendToRenderer('ui:simulation-progress', JSON.parse(line.slice(PROGRESS_PREFIX.length)))
+        } catch (_error) {
+          // Malformed progress line: ignore rather than pollute the log.
+        }
+        return
+      }
+      stderr += `${line}\n`
+      sendToRenderer('ui:simulation-log', `${line}\n`)
+    }
+
+    proc.stderr.on('data', (chunk) => {
+      stderrBuffer += chunk.toString()
+      const lines = stderrBuffer.split(/\r?\n/)
+      stderrBuffer = lines.pop()
+      lines.forEach(consumeStderrLine)
     })
 
     proc.on('error', (error) => reject(error))
     proc.on('close', (code) => {
+      if (stderrBuffer) {
+        consumeStderrLine(stderrBuffer)
+        stderrBuffer = ''
+      }
       try {
         resolve(parseBridgeOutput(stdout, stderr, code))
       } catch (error) {
@@ -143,7 +152,7 @@ ipcMain.handle('ui:load-province-map', async () => {
 })
 
 ipcMain.handle('ui:bootstrap', async () => {
-  return runBridgeSync('bootstrap', {
+  return runBridgeAsync('bootstrap', {
     baselineYear: 2025,
     modelPath: path.join(REPO_ROOT, 'twin_models.joblib'),
   })
@@ -164,5 +173,19 @@ ipcMain.handle('ui:simulate-next-year', async (event, payload) => {
     event.sender,
   )
   event.sender.send('ui:simulation-log', `Simulation completed for ${response.nextYear}.\n`)
+  return response
+})
+
+ipcMain.handle('ui:optimize-policy', async (event, payload) => {
+  event.sender.send('ui:simulation-log', 'Running policy model over the horizon...\n')
+  const response = await runBridgeAsync(
+    'optimize-policy',
+    {
+      ...payload,
+      modelPath: path.join(REPO_ROOT, 'twin_models.joblib'),
+    },
+    event.sender,
+  )
+  event.sender.send('ui:simulation-log', `Policy run completed through ${response.finalYear}.\n`)
   return response
 })

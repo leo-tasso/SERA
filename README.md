@@ -1,134 +1,102 @@
-# SERA Data Downloader
+# SERA — Italy Digital Twin
 
-Download historical data for the Italy Digital Twin project, starting with population indicators from ISTAT.
+SERA is a digital twin of the Italian provinces. It has three parts:
+
+1. **Data downloader** — fetches ~88 historical socioeconomic indicators (2001-2025) for the 110 Italian provinces from the ISTAT SDMX API into `data/`.
+2. **Twin engine** (`sera.twin`) — trains one ML model per indicator and simulates provincial indicators forward year by year under user-chosen policy levers, combining the trained models with a hand-written causal graph.
+3. **Control-room UI** (`ui/`) — an Electron + React dashboard with a clickable province map, per-province policy allocators, a national budget meter, and an AI policy optimizer that picks levers to maximize national GDP over a multi-year horizon.
 
 ## Setup
 
-### Python Environment (3.11)
+Python 3.11, virtual environment at `.venv`:
 
-This project uses Python 3.11. Set up a virtual environment:
-
-```bash
-# Create virtual environment
-python -m venv venv
-
-# Activate (Windows)
-venv\Scripts\activate
-
-# Activate (macOS/Linux)
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
+```powershell
+python -m venv .venv
+.venv\Scripts\activate          # Windows  (macOS/Linux: source .venv/bin/activate)
+pip install -r requirements.txt # or: pip install -e .
 ```
 
-Alternatively, using `pyproject.toml`:
+## Data downloader
 
-```bash
-pip install -e .
-```
-
-## Usage
-
-### Download Population Data
-
-Download resident population by province and region for 2001-2025:
-
-```bash
-# Set Python path to include src directory
+```powershell
 $env:PYTHONPATH = "$pwd\src"
 
-# Download population (2001-2025, or adjust years)
+# One indicator
 python src/sera/downloader.py --indicator population --start-year 2001 --end-year 2025
 
-# Download specific year range
-python src/sera/downloader.py --indicator population --start-year 2020 --end-year 2023
-
-# Save to custom location
-python src/sera/downloader.py --indicator population --output my_data.csv
+# Everything (88 indicators; slow — see rate limits below)
+python src/sera/downloader.py --indicator all
 ```
 
-### Output
+Output goes to `data/<category>/<indicator>/<indicator>_raw_<start>_<end>.csv`, with a
+`.mapping.json` next to each CSV documenting the source dataflow and column mapping.
 
-Data is saved as CSV in `data/` directory:
-- `population_raw_YYYY_YYYY.csv` - Raw population data by province and region
+### ISTAT rate limits and caching
 
-### Data Structure
+- ISTAT enforces a hard limit of **5 requests/minute per IP**; exceeding it can get the IP
+  banned for 1-2 days (`ISTAT_RATE_LIMIT_PER_MINUTE` in `sera.config`).
+- The client stays well under that with a **25-second minimum delay** between requests
+  (`ISTAT_MIN_DELAY_SECONDS`), counting failed requests too.
+- Responses are cached in `data/cache/`, keyed by dataflow, dimensional key, and year range.
+- Known ISTAT API quirk (documented across all ISTAT sources): the `endPeriod` parameter
+  returns year+1, so the client subtracts 1 from the requested end year.
 
-Population CSV columns:
-- `area_code`: ISTAT geographic code (IT for national, ITxxx for provinces/regions)
-- `frequency`: Data frequency (A = annual)
-- `year`: Year of observation
-- `population`: Resident population count
-- `sex`: Sex code (1 = total)
-- `age_group`: Age group (TOTAL = all ages)
-- `marital_status`: Marital status code (1 = total)
+## Twin engine
 
-## Architecture
+Train the per-indicator models and run a baseline simulation:
 
-### Modules
-
-- `sera.config`: Configuration and constants
-- `sera.istat_client`: ISTAT SDMX API client with rate limiting
-- `sera.downloaders.population`: Population indicator downloader
-- `sera.downloader`: Main CLI entry point
-
-### Rate Limiting
-
-The downloader respects ISTAT's API rate limits:
-- **Max**: 5 requests/minute per IP
-- **Minimum delay**: 12 seconds between requests
-- **Data caching**: Responses are cached locally to minimize API calls
-
-## Data Sources
-
-### Population (Indicator 1)
-- **Source**: ISTAT (Istituto Nazionale di Statistica)
-- **API**: SDMX Web Services (REST)
-- **Endpoint**: https://esploradati.istat.it/SDMXWS
-- **Dataflow**: `22_289_DF_DCIS_POPRES1_1`
-- **Coverage**: 
-  - National level (IT)
-  - Regional level (IT regions)
-  - Provincial level (~107 provinces)
-- **Time span**: 2019-2025 (available from endpoint)
-- **Frequency**: Annual (January snapshot)
-
-## Implementation Notes
-
-### Constraints & Workarounds
-
-1. **ISTAT Rate Limiting**: The API enforces 5 requests/minute. Exceeding this causes IP bans (1-2 days recovery).
-   - Mitigation: 12-second minimum delay between requests
-   - Local caching to avoid redundant API calls
-
-2. **ISTAT API Bug**: The `endPeriod` parameter returns year+1 data.
-   - Workaround: We subtract 1 from the requested end year
-
-3. **Data Availability**: The population endpoint only has data from 2019 onwards.
-   - Reason: This dataflow version was introduced in 2019
-   - Solution: Check alternative ISTAT dataflows for older data (2001+)
-
-## Next Steps
-
-1. **Additional Indicators**: Implement downloaders for other 108 indicators (birth rate, GDP, unemployment, etc.)
-2. **Historical Data**: Source older population data (pre-2019) from alternative ISTAT dataflows
-3. **Data Validation**: Add reconciliation with multiple sources to ensure data quality
-4. **Parameters**: Download government policy parameters and exogenous drivers
-
-## Files Generated
-
-- `pyproject.toml`: Python project configuration (Python 3.11)
-- `src/sera/`: Main downloader package
-- `data/population_raw_*.csv`: Downloaded population data
-
-## Testing
-
-Quick test with recent years only:
-
-```bash
+```powershell
 $env:PYTHONPATH = "$pwd\src"
-python src/sera/downloader.py --indicator population --start-year 2024 --end-year 2025
+python -m sera.twin.cli --mode train-and-simulate --model-type ridge --sim-years 5
 ```
 
-This downloads ~274 records in seconds and validates the complete pipeline.
+This writes `twin_models.joblib` (used by the UI) and `simulation_results.csv`.
+Useful flags: `--mode train|simulate|train-and-simulate`, `--baseline-year`,
+`--initial-state <csv>`, `--parameters-file <csv>`.
+
+How a simulated year works (`sera.twin.simulator`):
+
+1. Each indicator's trained model predicts from lagged indicators + policy levers; the
+   prediction is anchored to last year's value and only the *policy signal* (prediction under
+   chosen levers vs. baseline levers) is applied.
+2. Hand-written causal rules from `sera.twin.causal_graph` add a second, deliberate layer of
+   lever→indicator elasticity (see `CAUSAL_RULE_STRENGTH`).
+3. Inter-indicator effects propagate (e.g. income → poverty), bounds are enforced, and a
+   realism speed limit caps year-over-year change of any indicator at ±6%.
+
+`sera.twin.policy` defines the pluggable policy models used by the UI's optimizer:
+`baseline` (historical levers) and `gdp_nn`, a small NumPy MLP trained with evolution
+strategies to maximize cumulative national GDP, subject to the national budget constraint
+(unspent budget carries over as a reserve).
+
+## UI
+
+```powershell
+cd ui
+npm install
+npm start
+```
+
+Requirements: `twin_models.joblib` at the repo root (train it first), the `data/` directory,
+and `ui/province_provinces.geojson` (committed). All JS libraries (React, Chart.js, Babel)
+are vendored in `ui/vendor/` — the app makes **no network requests at runtime**.
+
+The Electron main process talks to Python through `ui/backend_bridge.py` (one process per
+command: `bootstrap`, `province-trends`, `simulate-next-year`, `optimize-policy`), streaming
+progress over stderr.
+
+## Tests
+
+```powershell
+python -m pytest tests -q
+```
+
+## Repository layout
+
+- `src/sera/config.py` — paths, ISTAT constants, indicator→category map
+- `src/sera/istat_client.py` — rate-limited, cached SDMX client
+- `src/sera/downloader.py` + `src/sera/downloaders/<category>/<indicator>.py` — CLI + one module per indicator
+- `src/sera/twin/` — data loading, model training, causal graph, simulator, policy models, CLI
+- `ui/` — Electron app (main.js, preload.js, renderer.js, backend_bridge.py)
+- `data/` — downloaded indicator CSVs (110 provinces, 2-letter sigle)
+- `tools/ad_hoc/` — one-off validation and demo scripts

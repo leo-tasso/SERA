@@ -378,6 +378,10 @@ button:disabled {
   align-items: start;
 }
 
+.chart-plot-col {
+  min-width: 0;
+}
+
 .indicator-map-panel {
   background: rgba(255, 255, 255, 0.88);
   border: 1px solid rgba(17, 42, 72, 0.08);
@@ -506,8 +510,80 @@ button:disabled {
   text-align: right;
 }
 
+.run-progress {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(17, 42, 72, 0.08);
+}
+
+.run-progress .resource-meter-label {
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 600;
+}
+
+.run-progress-fill {
+  background: linear-gradient(90deg, #1d4ea4, #3b82f6);
+}
+
 .allocator-card--spending {
   border-left: 3px solid rgba(29, 78, 164, 0.3);
+}
+
+.model-studio {
+  margin-top: 4px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(15, 118, 110, 0.06);
+  border: 1px solid rgba(15, 118, 110, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.model-select {
+  width: 100%;
+}
+
+.model-desc {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--muted);
+  margin: 0;
+}
+
+.model-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.model-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #587090;
+}
+
+.model-field input {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(17, 42, 72, 0.16);
+  background: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.model-field input:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
 @media (max-width: 1200px) {

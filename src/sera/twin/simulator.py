@@ -13,11 +13,35 @@ from sera.twin.causal_graph import (
     PARAMETER_EFFECT_DIRECTION,
     INDICATOR_EFFECT_DIRECTION,
     get_parameter_signal,
+    get_parameter_reference,
     get_indicator_bounds,
 )
 from sera.twin.model_trainer import ModelTrainer, IndicatorModel
 
 logger = logging.getLogger(__name__)
+
+# Realism speed limit: the largest plausible year-over-year change for any
+# indicator. Without it, the multiplicative causal rules and inter-indicator
+# propagation compound across a long horizon and let an optimiser drive GDP to
+# absurd values. At baseline policy levers, annual changes are far below this,
+# so it only constrains aggressively-pushed scenarios.
+DEFAULT_MAX_ANNUAL_GROWTH = 0.06
+
+# The trained indicator models are well-calibrated for *policy sensitivity* but
+# not for absolute level (the bootstrap initial state can sit on a different
+# scale than the training data, which would make the first prediction leap).
+# So we anchor each indicator to its previous-year value and use the model only
+# for the relative effect of policy vs. baseline policy, capped to this band.
+POLICY_SIGNAL_CAP = 0.5
+
+# Strength of the hand-written causal rules (max ±4% per lever per year, before
+# dampening). NOTE: policy levers deliberately act on indicators through TWO
+# layers that compound — the trained models' policy signal above AND these
+# explicit causal rules. The models capture the (often weak) statistical
+# sensitivity present in the historical data; the rules add a guaranteed
+# domain-knowledge elasticity so every documented lever→indicator link responds
+# even where the data is too noisy for the models to learn it.
+CAUSAL_RULE_STRENGTH = 0.04
 
 
 class DigitalTwinSimulator:
@@ -47,6 +71,7 @@ class DigitalTwinSimulator:
         parameters_year: pd.DataFrame,  # area_code, year, and parameter columns
         apply_rules: bool = True,
         apply_bounds: bool = True,
+        max_annual_growth: Optional[float] = DEFAULT_MAX_ANNUAL_GROWTH,
     ) -> pd.DataFrame:
         """Simulate one year forward.
         
@@ -70,24 +95,62 @@ class DigitalTwinSimulator:
                                           if col not in ["area_code", "year"]]].copy()
         lagged_indicators = lagged_indicators.add_suffix("_lag1")
         
+        parameter_cols = [
+            col for col in parameters_year.columns if col not in ["area_code", "year"]
+        ]
+        # Align parameter rows to the state's provinces explicitly: the frames
+        # are combined positionally below, so any difference in row order or
+        # province coverage would silently assign levers to the wrong province.
+        aligned_parameters = current_state[["area_code"]].merge(
+            parameters_year.drop(columns=["year"], errors="ignore"),
+            on="area_code",
+            how="left",
+        )
+        for col in parameter_cols:
+            if aligned_parameters[col].isna().any():
+                aligned_parameters[col] = aligned_parameters[col].fillna(
+                    get_parameter_reference(col)[0]
+                )
+        parameters_only = aligned_parameters[parameter_cols].reset_index(drop=True)
+
         # Combine lagged indicators with parameters
         features = pd.concat([
             current_state[["area_code"]].reset_index(drop=True),
             lagged_indicators.reset_index(drop=True),
-            parameters_year[[col for col in parameters_year.columns 
-                            if col not in ["area_code", "year"]]].reset_index(drop=True),
+            parameters_only,
         ], axis=1)
-        
+
+        # A twin feature frame with every lever held at its historical baseline.
+        # Comparing predictions against this isolates the *policy* effect and
+        # cancels the model's absolute-level mis-calibration.
+        baseline_parameters = parameters_only.copy()
+        for col in parameter_cols:
+            baseline_parameters[col] = get_parameter_reference(col)[0]
+        features_baseline = pd.concat([
+            current_state[["area_code"]].reset_index(drop=True),
+            lagged_indicators.reset_index(drop=True),
+            baseline_parameters,
+        ], axis=1)
+
         # Predict each indicator
         predictions = {}
         for indicator in self.indicators:
+            lagged_col = f"{indicator}_lag1"
+            lag_values = (
+                lagged_indicators[lagged_col].values
+                if lagged_col in lagged_indicators.columns
+                else None
+            )
+
             model = self.trainer.get_model(indicator)
             if model is None:
-                # No model trained for this indicator
+                # No model trained for this indicator: hold at last value.
                 logger.warning(f"No trained model for {indicator}, using lagged value")
-                predictions[indicator] = lagged_indicators[f"{indicator}_lag1"].values
+                predictions[indicator] = (
+                    lag_values if lag_values is not None else np.zeros(len(features))
+                )
                 continue
-            
+
             # Prepare features for this model
             model_features = [f for f in model.feature_names if f in features.columns]
             if len(model_features) != len(model.feature_names):
@@ -95,27 +158,37 @@ class DigitalTwinSimulator:
                     f"Feature mismatch for {indicator}: "
                     f"have {len(model_features)}, expected {len(model.feature_names)}"
                 )
-                # Use lagged value as fallback if available
-                lagged_col = f"{indicator}_lag1"
-                if lagged_col in lagged_indicators.columns:
-                    predictions[indicator] = lagged_indicators[lagged_col].values
+                if lag_values is not None:
+                    predictions[indicator] = lag_values
                 else:
                     logger.warning(f"No lagged value available for {indicator}, using zeros")
                     predictions[indicator] = np.zeros(len(features))
                 continue
-            
-            X = features[model_features].values
-            pred = model.predict(X)
-            predictions[indicator] = pred
-        
+
+            pred = model.predict(features[model_features].values)
+
+            if lag_values is None:
+                # No persistence anchor available: fall back to the raw prediction.
+                predictions[indicator] = pred
+                continue
+
+            # Anchor to last year's value and apply only the model's relative
+            # response to policy (prediction under chosen levers vs. baseline levers).
+            pred_baseline = model.predict(features_baseline[model_features].values)
+            denom = np.abs(pred_baseline) + 1e-6
+            policy_signal = np.clip(
+                (pred - pred_baseline) / denom, -POLICY_SIGNAL_CAP, POLICY_SIGNAL_CAP
+            )
+            predictions[indicator] = lag_values * (1.0 + policy_signal)
+
         # Create results dataframe
         for indicator, pred in predictions.items():
             result[indicator] = pred
         
-        # Apply causal rules
+        # Apply causal rules (on the aligned parameters: same row order as result)
         if apply_rules:
             result = self._apply_causal_rules(
-                result, parameters_year, lagged_indicators
+                result, aligned_parameters, lagged_indicators
             )
         
         # Apply bounds
@@ -127,7 +200,14 @@ class DigitalTwinSimulator:
 
         if apply_bounds:
             result = self._apply_bounds(result)
-        
+
+        # Cap implausible year-over-year swings so policy effects can't compound
+        # into runaway growth over a long horizon.
+        if max_annual_growth is not None and max_annual_growth > 0:
+            result = self._apply_growth_limits(result, lagged_indicators, max_annual_growth)
+            if apply_bounds:
+                result = self._apply_bounds(result)
+
         return result
 
     def simulate_scenario(
@@ -204,12 +284,16 @@ class DigitalTwinSimulator:
         lagged_indicators: pd.DataFrame,
     ) -> pd.DataFrame:
         """Apply causal rules to adjust predictions based on parameters.
-        
+
+        This is the second, intentional layer of policy response on top of the
+        models' policy signal (see ``CAUSAL_RULE_STRENGTH``): it encodes the
+        causal-graph links directly so levers always have a plausible effect.
+
         Args:
             predictions: DataFrame with model predictions
             parameters: DataFrame with annual parameters
             lagged_indicators: DataFrame with lagged indicator values
-            
+
         Returns:
             DataFrame with rule-adjusted predictions
         """
@@ -247,7 +331,7 @@ class DigitalTwinSimulator:
                 # Get non-linear dampening based on current value
                 # As indicator approaches upper bound, effect weakens
                 current_values = result[indicator].values
-                base_adjustment = effect_sign * param_signal * 0.04
+                base_adjustment = effect_sign * param_signal * CAUSAL_RULE_STRENGTH
                 
                 # Apply non-linear dampening
                 dampening = self._get_nonlinear_dampening(
@@ -280,7 +364,51 @@ class DigitalTwinSimulator:
             
             lower, upper = bounds
             result[indicator] = np.clip(result[indicator], lower, upper)
-        
+
+        return result
+
+    def _apply_growth_limits(
+        self,
+        predictions: pd.DataFrame,
+        lagged_indicators: pd.DataFrame,
+        max_annual_growth: float,
+    ) -> pd.DataFrame:
+        """Smoothly limit each indicator's year-over-year change to ±max_annual_growth.
+
+        A realism speed limit: no socioeconomic indicator can plausibly jump by a
+        large fraction in a single year. This prevents the multiplicative causal
+        rules and propagation from compounding into runaway values (e.g. GDP
+        exploding when an optimiser pushes the levers to their extremes).
+
+        The change is squashed through ``tanh`` rather than hard-clipped: it
+        asymptotes to ±max_annual_growth but always keeps a non-zero slope. A
+        hard clip would flatten the objective landscape (every aggressive policy
+        lands on the exact cap), leaving a policy optimiser with no gradient to
+        follow; the smooth version preserves that gradient.
+        """
+        result = predictions.copy()
+
+        for indicator in self.indicators:
+            if indicator not in result.columns:
+                continue
+
+            lagged_col = f"{indicator}_lag1"
+            if lagged_col not in lagged_indicators.columns:
+                continue
+
+            lag = lagged_indicators[lagged_col].values.astype(float)
+            current = result[indicator].values.astype(float)
+
+            # Only constrain where there is a usable previous value.
+            mask = np.isfinite(lag) & (np.abs(lag) > 1e-9) & np.isfinite(current)
+
+            relative_change = np.zeros_like(current)
+            relative_change[mask] = (current[mask] - lag[mask]) / np.abs(lag[mask])
+            squashed = max_annual_growth * np.tanh(relative_change / max_annual_growth)
+            limited = lag * (1.0 + squashed)
+
+            result[indicator] = np.where(mask, limited, current)
+
         return result
 
     def _propagate_indicator_effects(
