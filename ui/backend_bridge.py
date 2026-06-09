@@ -18,6 +18,22 @@ from sera.twin.model_trainer import ModelTrainer
 from sera.twin.province_mapping import PROVINCE_SIGLAS_110
 from sera.twin.simulator import DigitalTwinSimulator
 
+SPENDING_PARAMS = {
+    'healthcare_spending_allocation',
+    'education_spending_allocation',
+    'infrastructure_investment_allocation',
+    'social_welfare_spending_allocation',
+    'rd_innovation_incentives',
+    'green_energy_environment_investment',
+    'pension_retirement_spending',
+    'agriculture_support_level',
+    'manufacturing_incentives',
+    'tourism_support_level',
+    'small_business_support',
+    'public_sector_wage_levels',
+    'housing_urban_development_support',
+}
+
 INDICATORS = {
     'business_density': ('economic', 1),
     'gdp_per_capita': ('economic', 1),
@@ -61,6 +77,26 @@ def format_label(key: str) -> str:
 def dataframe_records(frame: pd.DataFrame) -> list[dict]:
     sanitized = frame.astype(object).where(pd.notna(frame), None)
     return sanitized.to_dict(orient='records')
+
+
+def get_spending_intensity_pct() -> float:
+    """Return the public spending intensity as % of GDP from historical data."""
+    path = (
+        DATA_DIR
+        / 'public_finance'
+        / 'public_spending_efficiency'
+        / 'public_spending_efficiency_raw_2001_2025.csv'
+    )
+    try:
+        frame = pd.read_csv(path)
+        col = 'public_spending_intensity_pct_gdp'
+        if col in frame.columns:
+            series = pd.to_numeric(frame[col], errors='coerce').dropna()
+            if not series.empty:
+                return float(series.iloc[-1])
+    except Exception:
+        pass
+    return 19.0
 
 
 def parameter_limits(key: str) -> tuple[float, float, float, float]:
@@ -112,6 +148,7 @@ def build_bootstrap(payload: dict) -> dict:
         'defaultAllocations': default_allocations(metadata),
         'latestStateRows': dataframe_records(latest_state),
         'provinces': PROVINCE_SIGLAS_110,
+        'spendingIntensityPct': get_spending_intensity_pct(),
     }
 
 
@@ -167,6 +204,61 @@ def load_province_trends(payload: dict) -> dict:
     }
 
 
+def _apply_budget_constraint(
+    allocations: dict[str, dict[str, float]],
+    current_state: pd.DataFrame,
+    spending_intensity_pct: float = 19.0,
+    reserve_pool: float = 0.0,
+) -> dict[str, dict[str, float]]:
+    """Scale spending params down if total national cost exceeds the available budget.
+
+    Cost formula (mirrors frontend ResourceMeter):
+      province_cost = avg(val / baseline  for each spending param) * (intensity/100) * gdp
+      province_base_limit = (intensity/100) * gdp
+    At historical baseline values, cost == limit exactly (100% utilisation).
+    Unused budget from prior years (reserve_pool) extends the effective national pool.
+    """
+    spending_keys = list(SPENDING_PARAMS)
+    if not spending_keys:
+        return allocations
+
+    param_baselines = {key: max(parameter_limits(key)[0], 1e-9) for key in spending_keys}
+
+    gdp_by_province: dict[str, float] = {}
+    for _, row in current_state.iterrows():
+        code = str(row.get('area_code', '')).strip().upper()
+        gdp = float(row.get('gdp_per_capita', 0) or 0)
+        if gdp > 0:
+            gdp_by_province[code] = gdp
+
+    base_pool = sum(gdp_by_province.values()) * spending_intensity_pct / 100.0
+    total_pool = base_pool + reserve_pool
+    if total_pool <= 0:
+        return allocations
+
+    total_used = 0.0
+    for code, gdp in gdp_by_province.items():
+        prov = allocations.get(code, {})
+        ratio_sum = sum(
+            float(prov.get(key, param_baselines[key])) / param_baselines[key]
+            for key in spending_keys
+        )
+        avg_ratio = ratio_sum / len(spending_keys)
+        cost = avg_ratio * gdp * spending_intensity_pct / 100.0
+        total_used += cost
+
+    if total_used <= total_pool:
+        return allocations
+
+    scale = total_pool / total_used
+    scaled = {code: dict(params) for code, params in allocations.items()}
+    for code in scaled:
+        for key in spending_keys:
+            if key in scaled[code]:
+                scaled[code][key] = scaled[code][key] * scale
+    return scaled
+
+
 def build_parameters_frame(next_year: int, allocations: dict[str, dict[str, float]]) -> pd.DataFrame:
     parameter_keys = list(ANNUAL_PARAMETERS.keys())
     rows = []
@@ -201,7 +293,13 @@ def simulate_next_year(payload: dict) -> dict:
 
     model_path = Path(payload.get('modelPath') or REPO_ROOT / 'twin_models.joblib')
     trainer = ModelTrainer.load(model_path)
-    parameters_frame = build_parameters_frame(next_year, payload.get('allocations') or {})
+    raw_allocations = payload.get('allocations') or {}
+    spending_intensity_pct = float(payload.get('spendingIntensityPct') or get_spending_intensity_pct())
+    reserve_pool = float(payload.get('reservePool') or 0.0)
+    constrained_allocations = _apply_budget_constraint(
+        raw_allocations, current_state, spending_intensity_pct, reserve_pool
+    )
+    parameters_frame = build_parameters_frame(next_year, constrained_allocations)
 
     indicator_columns = [column for column in current_state.columns if column not in {'area_code', 'year'}]
     simulator = DigitalTwinSimulator(trainer, indicator_columns, list(ANNUAL_PARAMETERS.keys()))

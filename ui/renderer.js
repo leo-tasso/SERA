@@ -10,6 +10,22 @@ const DEFAULT_INDICATORS = [
 ]
 const CHART_COLORS = ['#1d4ea4', '#0f766e', '#d97706', '#be123c', '#6d28d9', '#0891b2']
 
+const SPENDING_PARAMS = new Set([
+  'healthcare_spending_allocation',
+  'education_spending_allocation',
+  'infrastructure_investment_allocation',
+  'social_welfare_spending_allocation',
+  'rd_innovation_incentives',
+  'green_energy_environment_investment',
+  'pension_retirement_spending',
+  'agriculture_support_level',
+  'manufacturing_incentives',
+  'tourism_support_level',
+  'small_business_support',
+  'public_sector_wage_levels',
+  'housing_urban_development_support',
+])
+
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value))
 }
@@ -193,6 +209,39 @@ function hasValue(value) {
   return value !== null && value !== undefined
 }
 
+function computeResourceBudget(allocations, parameterMeta, latestStateRows, spendingIntensityPct, reservePool) {
+  const spendingMeta = parameterMeta.filter((p) => SPENDING_PARAMS.has(p.key))
+  const numSpending = spendingMeta.length
+  const intensity = Number(spendingIntensityPct) || 19.0
+  let totalBasePool = 0
+  let totalUsed = 0
+  const byProvince = {}
+
+  latestStateRows.forEach((row) => {
+    const code = String(row.area_code || '').trim().toUpperCase()
+    const gdp = Number(row.gdp_per_capita)
+    if (!Number.isFinite(gdp) || gdp <= 0) return
+
+    const provinceAllocs = allocations[code] || {}
+    const ratioSum = numSpending > 0
+      ? spendingMeta.reduce((sum, pm) => {
+          const val = hasValue(provinceAllocs[pm.key]) ? provinceAllocs[pm.key] : pm.baseline
+          return sum + Number(val) / Math.max(Number(pm.baseline), 1)
+        }, 0)
+      : 0
+    const avgRatio = numSpending > 0 ? ratioSum / numSpending : 0
+    const baseLimit = (intensity / 100) * gdp
+    const cost = avgRatio * baseLimit
+
+    byProvince[code] = { cost }
+    totalBasePool += baseLimit
+    totalUsed += cost
+  })
+
+  const totalPool = totalBasePool + Math.max(0, Number(reservePool) || 0)
+  return { byProvince, totalUsed, totalBasePool, totalPool }
+}
+
 const ItalyMap = React.memo(function ItalyMap({ features, allocations, parameterMeta, selectedProvince, onSelectProvince }) {
   const projection = useMemo(() => buildProjection(features, MAP_WIDTH, MAP_HEIGHT, 26), [features])
 
@@ -266,7 +315,34 @@ const ItalyMap = React.memo(function ItalyMap({ features, allocations, parameter
   )
 })
 
-function TrendChart({ provinceName, provinceCode, rows, indicatorKeys }) {
+function ResourceMeter({ used, limit, label, reserve }) {
+  const effectiveLimit = limit + Math.max(0, Number(reserve) || 0)
+  const fraction = effectiveLimit > 0 ? used / effectiveLimit : 0
+  const pct = Math.min(fraction * 100, 100)
+  const over = fraction > 1
+  const fillColor = fraction < 0.75 ? '#22c55e' : fraction < 0.92 ? '#f59e0b' : '#ef4444'
+  const reserveAmount = Math.max(0, Number(reserve) || 0)
+
+  return (
+    <div className="resource-meter">
+      <div className="resource-meter-header">
+        <span className="resource-meter-label">{label}</span>
+        <span className="resource-meter-pct" style={{ color: over ? '#ef4444' : undefined }}>
+          {(fraction * 100).toFixed(1)}%{over ? ' ▲ Over limit' : ''}
+        </span>
+      </div>
+      <div className="resource-meter-track">
+        <div className="resource-meter-fill" style={{ width: `${pct}%`, background: fillColor }} />
+      </div>
+      <div className="resource-meter-sub">
+        {formatNumber(used)} / {formatNumber(effectiveLimit)} EUR/cap
+        {reserveAmount > 0 && ` (incl. ${formatNumber(reserveAmount)} reserve)`}
+      </div>
+    </div>
+  )
+}
+
+function TrendChart({ provinceName, provinceCode, rows, indicatorKeys, simulationStartYear }) {
   const canvasRef = useRef(null)
   const chartRef = useRef(null)
 
@@ -287,6 +363,32 @@ function TrendChart({ provinceName, provinceCode, rows, indicatorKeys }) {
       spanGaps: true,
       tension: 0.28,
     }))
+
+    const simulationLinePlugin = simulationStartYear != null ? {
+      id: 'simulationLine',
+      afterDraw(chart) {
+        const { ctx, scales } = chart
+        const xScale = scales.x
+        const yScale = scales.y
+        const idx = chart.data.labels.findIndex((l) => String(l) === String(simulationStartYear))
+        if (idx < 0) return
+        const x = xScale.getPixelForValue(idx)
+        ctx.save()
+        ctx.beginPath()
+        ctx.setLineDash([6, 4])
+        ctx.moveTo(x, yScale.top)
+        ctx.lineTo(x, yScale.bottom)
+        ctx.strokeStyle = '#dc2626'
+        ctx.lineWidth = 2
+        ctx.stroke()
+        ctx.setLineDash([])
+        ctx.fillStyle = '#dc2626'
+        ctx.font = 'bold 11px "Segoe UI", Helvetica, sans-serif'
+        ctx.textAlign = 'left'
+        ctx.fillText('Simulation start', x + 5, yScale.top + 14)
+        ctx.restore()
+      },
+    } : null
 
     if (chartRef.current) {
       chartRef.current.destroy()
@@ -319,6 +421,7 @@ function TrendChart({ provinceName, provinceCode, rows, indicatorKeys }) {
           },
         },
       },
+      plugins: simulationLinePlugin ? [simulationLinePlugin] : [],
     })
 
     return () => {
@@ -327,7 +430,7 @@ function TrendChart({ provinceName, provinceCode, rows, indicatorKeys }) {
         chartRef.current = null
       }
     }
-  }, [indicatorKeys, provinceCode, provinceName, rows])
+  }, [indicatorKeys, provinceCode, provinceName, rows, simulationStartYear])
 
   if (!rows.length) {
     return <div className="empty-state">No historical data is available for this province.</div>
@@ -344,6 +447,77 @@ function TrendChart({ provinceName, provinceCode, rows, indicatorKeys }) {
   )
 }
 
+const IndicatorMap = React.memo(function IndicatorMap({ features, latestStateRows, indicatorKey, selectedProvince, onSelectProvince }) {
+  const projection = useMemo(() => buildProjection(features, MAP_WIDTH, MAP_HEIGHT, 26), [features])
+
+  const mappedFeatures = useMemo(() => {
+    return features.map((feature) => {
+      const provinceCode = String(feature.properties.prov_acr || '').trim().toUpperCase()
+      return {
+        feature,
+        provinceCode,
+        path: geometryToPath(feature.geometry, projection.project),
+      }
+    })
+  }, [features, projection])
+
+  const provinceValues = useMemo(() => {
+    const result = {}
+    latestStateRows.forEach((row) => {
+      if (row.area_code && indicatorKey) {
+        const val = row[indicatorKey]
+        if (val !== null && val !== undefined) {
+          result[String(row.area_code).trim().toUpperCase()] = Number(val)
+        }
+      }
+    })
+    return result
+  }, [latestStateRows, indicatorKey])
+
+  const valueRange = useMemo(() => {
+    const vals = Object.values(provinceValues).filter((v) => Number.isFinite(v))
+    if (!vals.length) return { min: 0, max: 0 }
+    return { min: Math.min(...vals), max: Math.max(...vals) }
+  }, [provinceValues])
+
+  function indicatorFillColor(value) {
+    if (!Number.isFinite(value)) return '#e8eef6'
+    const span = Math.max(valueRange.max - valueRange.min, 1e-9)
+    const ratio = (value - valueRange.min) / span
+    return interpolateColor(['#d1e4f5', '#a5c8ed', '#6aaad6', '#3b82b8', '#1d5c94', '#0f3d6b'], ratio)
+  }
+
+  return (
+    <React.Fragment>
+      <div className="map-frame">
+        <svg className="italy-map" viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`} role="img" aria-label={`${formatLabel(indicatorKey)} by province`}>
+          {mappedFeatures.map(({ feature, provinceCode, path }) => {
+            const value = provinceValues[provinceCode]
+            return (
+              <path
+                key={provinceCode}
+                className={`province${provinceCode === selectedProvince ? ' selected' : ''}`}
+                d={path}
+                fill={indicatorFillColor(Number.isFinite(value) ? value : NaN)}
+                stroke={provinceCode === selectedProvince ? '#153b92' : 'rgba(16, 32, 56, 0.22)'}
+                strokeWidth={provinceCode === selectedProvince ? 1.7 : 0.8}
+                onClick={() => onSelectProvince(provinceCode)}
+              >
+                <title>{`${feature.properties.prov_name} (${provinceCode}): ${formatNumber(value)}`}</title>
+              </path>
+            )
+          })}
+        </svg>
+      </div>
+      <div className="map-legend">
+        <span>{formatNumber(valueRange.min)}</span>
+        <div className="legend-bar legend-bar--blue" />
+        <span>{formatNumber(valueRange.max)}</span>
+      </div>
+    </React.Fragment>
+  )
+})
+
 function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -356,11 +530,14 @@ function App() {
   const [allocations, setAllocations] = useState({})
   const [selectedProvince, setSelectedProvince] = useState('')
   const [currentYear, setCurrentYear] = useState(null)
-  const [selectedIndicators, setSelectedIndicators] = useState(DEFAULT_INDICATORS)
+  const [selectedIndicator, setSelectedIndicator] = useState(DEFAULT_INDICATORS[0])
+  const [baselineYear, setBaselineYear] = useState(null)
   const [simulationLog, setSimulationLog] = useState('')
   const [summary, setSummary] = useState(null)
   const [isSimulating, setIsSimulating] = useState(false)
   const [isLoadingTrends, setIsLoadingTrends] = useState(false)
+  const [spendingIntensityPct, setSpendingIntensityPct] = useState(19.0)
+  const [reservePool, setReservePool] = useState(0)
 
   useEffect(() => {
     const unsubscribe = window.seraApi.onSimulationLog((message) => {
@@ -390,6 +567,8 @@ function App() {
         setLatestStateRows(bootstrap.latestStateRows || [])
         setAllocations(bootstrap.defaultAllocations || {})
         setCurrentYear(bootstrap.baselineYear)
+        setBaselineYear(bootstrap.baselineYear)
+        setSpendingIntensityPct(Number(bootstrap.spendingIntensityPct) || 19.0)
 
         const firstFeature = (mapData.features || [])[0]
         const firstProvince = (firstFeature && firstFeature.properties && firstFeature.properties.prov_acr)
@@ -445,15 +624,20 @@ function App() {
     return mapVisibleIndicatorKeys.slice(0, 4)
   }, [mapVisibleIndicatorKeys])
 
+  const resourceBudget = useMemo(
+    () => computeResourceBudget(allocations, parameterMeta, latestStateRows, spendingIntensityPct, reservePool),
+    [allocations, parameterMeta, latestStateRows, spendingIntensityPct, reservePool],
+  )
+
   useEffect(() => {
     let active = true
 
     async function loadProvinceTrendData() {
-      if (!selectedProvince || !selectedIndicators.length || !currentYear) {
+      if (!selectedProvince || !selectedIndicator || !currentYear) {
         return
       }
 
-      const missingKeys = selectedIndicators.filter((key) => !selectedProvinceCache.keysLoaded.includes(key))
+      const missingKeys = [selectedIndicator].filter((key) => !selectedProvinceCache.keysLoaded.includes(key))
       if (!missingKeys.length) {
         return
       }
@@ -496,7 +680,7 @@ function App() {
     return () => {
       active = false
     }
-  }, [currentYear, selectedIndicators, selectedProvince, selectedProvinceCache])
+  }, [currentYear, selectedIndicator, selectedProvince, selectedProvinceCache])
 
   function updateProvinceAllocation(parameterKey, nextValue) {
     setAllocations((currentValue) => ({
@@ -517,15 +701,6 @@ function App() {
     }))
   }
 
-  function toggleIndicator(indicatorKey) {
-    setSelectedIndicators((currentValue) => {
-      if (currentValue.includes(indicatorKey)) {
-        return currentValue.filter((value) => value !== indicatorKey)
-      }
-      return [...currentValue, indicatorKey]
-    })
-  }
-
   async function runSimulation() {
     try {
       setIsSimulating(true)
@@ -534,12 +709,17 @@ function App() {
         currentYear,
         currentStateRows: latestStateRows,
         allocations,
+        spendingIntensityPct,
+        reservePool,
       })
 
       setLatestStateRows(response.nextStateRows || [])
       setSimulationRows((currentValue) => [...currentValue, ...(response.nextStateRows || [])])
       setSummary(response.summary || null)
       setCurrentYear(response.nextYear)
+      const yearlyBudget = resourceBudget.totalBasePool
+      const yearlyUsed = Math.min(resourceBudget.totalUsed, resourceBudget.totalPool)
+      setReservePool((prev) => Math.max(0, prev + yearlyBudget - yearlyUsed))
     } catch (simulationError) {
       setError(simulationError.message || String(simulationError))
     } finally {
@@ -587,6 +767,12 @@ function App() {
             <div>
               <div className="year-badge">Simulation year: {currentYear}</div>
             </div>
+            <ResourceMeter
+              used={resourceBudget.totalUsed}
+              limit={resourceBudget.totalBasePool}
+              reserve={reservePool}
+              label="National resource pool"
+            />
             <div>
               <p className="control-label">Map source</p>
               <p className="control-text">{mapPayload && mapPayload.mapPath}</p>
@@ -660,7 +846,7 @@ function App() {
                     : parameter.baseline
                   const value = Number(rawValue)
                   return (
-                    <div className="allocator-card" key={parameter.key}>
+                    <div className={`allocator-card${SPENDING_PARAMS.has(parameter.key) ? ' allocator-card--spending' : ''}`} key={parameter.key}>
                       <div className="allocator-head">
                         <span className="allocator-name">{parameter.label}</span>
                         <span className="allocator-value">{formatNumber(value)}</span>
@@ -686,7 +872,7 @@ function App() {
 
               <div className="allocator-actions">
                 <button className="secondary-button" onClick={resetProvinceAllocations}>Reset province</button>
-                <button className="ghost-button" onClick={() => setSelectedIndicators(DEFAULT_INDICATORS)}>Reset chart indicators</button>
+                <button className="ghost-button" onClick={() => setSelectedIndicator(DEFAULT_INDICATORS[0])}>Reset chart indicator</button>
               </div>
             </div>
           )}
@@ -694,30 +880,47 @@ function App() {
       </section>
 
       <section className="chart-panel">
-        <h2>Indicator trends</h2>
+        <h2>Indicator trend</h2>
         <p className="chart-subtitle">
           Historical series and simulated future values for the selected province are plotted together.
         </p>
         <div className="indicator-picker">
-          {indicatorKeys.map((indicatorKey) => (
-            <label className="indicator-chip" key={indicatorKey}>
-              <input
-                type="checkbox"
-                checked={selectedIndicators.includes(indicatorKey)}
-                onChange={() => toggleIndicator(indicatorKey)}
-              />
-              <span>{formatLabel(indicatorKey)}</span>
-            </label>
-          ))}
+          <select
+            className="indicator-select"
+            value={selectedIndicator}
+            onChange={(event) => setSelectedIndicator(event.target.value)}
+          >
+            {indicatorKeys.map((key) => (
+              <option key={key} value={key}>{formatLabel(key)}</option>
+            ))}
+          </select>
         </div>
 
-        <TrendChart
-          provinceName={(currentProvinceFeature && currentProvinceFeature.properties && currentProvinceFeature.properties.prov_name) || 'Province'}
-          provinceCode={selectedProvince}
-          rows={currentProvinceRows}
-          indicatorKeys={selectedIndicators}
-        />
-        {isLoadingTrends ? <div className="empty-state" style={{ marginTop: 12 }}>Loading trend data for the selected province...</div> : null}
+        <div className="chart-plot-row">
+          <div className="chart-plot-col">
+            <TrendChart
+              provinceName={(currentProvinceFeature && currentProvinceFeature.properties && currentProvinceFeature.properties.prov_name) || 'Province'}
+              provinceCode={selectedProvince}
+              rows={currentProvinceRows}
+              indicatorKeys={[selectedIndicator]}
+              simulationStartYear={simulationRows.length > 0 ? Number(baselineYear) + 1 : null}
+            />
+            {isLoadingTrends ? <div className="empty-state" style={{ marginTop: 12 }}>Loading trend data for the selected province...</div> : null}
+          </div>
+          <div className="indicator-map-panel">
+            <div className="indicator-map-header">
+              <h3 className="indicator-map-title">{formatLabel(selectedIndicator)}</h3>
+              <p className="indicator-map-subtitle">Latest value per province</p>
+            </div>
+            <IndicatorMap
+              features={features}
+              latestStateRows={latestStateRows}
+              indicatorKey={selectedIndicator}
+              selectedProvince={selectedProvince}
+              onSelectProvince={setSelectedProvince}
+            />
+          </div>
+        </div>
       </section>
 
       <section className="log-panel">

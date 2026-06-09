@@ -351,25 +351,58 @@ button:disabled {
 }
 
 .indicator-picker {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
   margin-top: 14px;
 }
 
-.indicator-chip {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  border-radius: 16px;
-  background: rgba(17, 42, 72, 0.05);
+.indicator-select {
+  padding: 10px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(17, 42, 72, 0.15);
+  background: rgba(255, 255, 255, 0.92);
   color: var(--ink);
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 600;
+  min-width: 260px;
+  cursor: pointer;
 }
 
-.indicator-chip input {
+.indicator-select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.chart-plot-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(240px, 0.65fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.indicator-map-panel {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(17, 42, 72, 0.08);
+  border-radius: 20px;
+  padding: 14px;
+}
+
+.indicator-map-header {
+  margin-bottom: 10px;
+}
+
+.indicator-map-title {
   margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.indicator-map-subtitle {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.legend-bar--blue {
+  background: linear-gradient(90deg, #d1e4f5 0%, #0f3d6b 100%);
 }
 
 .chart-canvas {
@@ -422,6 +455,59 @@ button:disabled {
   background: var(--panel);
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
+}
+
+.resource-meter {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(17, 42, 72, 0.08);
+}
+
+.resource-meter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.resource-meter-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #587090;
+}
+
+.resource-meter-pct {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.resource-meter-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(17, 42, 72, 0.08);
+  overflow: hidden;
+}
+
+.resource-meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+
+.resource-meter-sub {
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: right;
+}
+
+.allocator-card--spending {
+  border-left: 3px solid rgba(29, 78, 164, 0.3);
 }
 
 @media (max-width: 1200px) {
