@@ -22,6 +22,33 @@ const CANDIDATE_COLORS = {
   baseline: BASELINE_SERIES_COLOR,
 }
 
+// How auditable each policy model's *result* is (mirrors PolicyModel.explainability).
+const EXPLAINABILITY_META = {
+  'white-box': {
+    label: 'White box',
+    color: '#0f766e',
+    blurb: 'The policy itself is directly readable — weights, rules, or lever tables you can audit.',
+  },
+  'gray-box': {
+    label: 'Gray box',
+    color: '#d97706',
+    blurb: 'A transparent surrogate explains the policy, including its own uncertainty.',
+  },
+  'black-box': {
+    label: 'Black box + audit',
+    color: '#be123c',
+    blurb: 'Not directly interpretable; audited post hoc with importance scores and a distilled tree.',
+  },
+}
+
+const DIVERGING_PALETTE = ['#b61c3e', '#e9a7b7', '#f1f5f9', '#7fc1b4', '#0f766e']
+
+function featureDisplayName(key) {
+  if (key === 'bias') return 'Base level'
+  if (key === 'year_position') return 'Year in horizon'
+  return formatLabel(key)
+}
+
 const SPENDING_PARAMS = new Set([
   'healthcare_spending_allocation',
   'education_spending_allocation',
@@ -724,6 +751,237 @@ const IndicatorMap = React.memo(function IndicatorMap({ features, latestStateRow
   )
 })
 
+function ExplainBadge({ explainability }) {
+  const meta = EXPLAINABILITY_META[explainability]
+  if (!meta) return null
+  return (
+    <span className="explain-badge" style={{ background: `${meta.color}1a`, color: meta.color, borderColor: `${meta.color}55` }} title={meta.blurb}>
+      {meta.label}
+    </span>
+  )
+}
+
+function LeverDeltaTable({ levers, limit }) {
+  const rows = [...(levers || [])]
+    .map((item) => ({
+      ...item,
+      shift: Math.abs(item.value - item.baseline) / Math.max(
+        (Number.isFinite(item.max) ? item.max : item.value) - (Number.isFinite(item.min) ? item.min : item.baseline),
+        1e-9,
+      ),
+    }))
+    .sort((a, b) => b.shift - a.shift)
+    .slice(0, limit || levers.length)
+  return (
+    <table className="explain-table">
+      <thead>
+        <tr><th>Lever</th><th>Chosen value</th><th>Baseline</th></tr>
+      </thead>
+      <tbody>
+        {rows.map((item) => (
+          <tr key={item.lever}>
+            <td>{formatLabel(item.lever)}</td>
+            <td>{formatNumber(item.value)}</td>
+            <td>{formatNumber(item.baseline)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+function LinearWeightsHeatmap({ explanation }) {
+  const features = explanation.features || []
+  const levers = explanation.levers || []
+  let maxAbs = 0
+  levers.forEach((row) => {
+    features.forEach((feature) => {
+      maxAbs = Math.max(maxAbs, Math.abs(Number(row.weights[feature]) || 0))
+    })
+  })
+  const cellColor = (weight) => {
+    if (!(maxAbs > 0) || !Number.isFinite(weight)) return '#f1f5f9'
+    return interpolateColor(DIVERGING_PALETTE, (weight + maxAbs) / (2 * maxAbs))
+  }
+  return (
+    <div className="explain-scroll">
+      <table className="explain-table explain-heatmap">
+        <thead>
+          <tr>
+            <th>Lever</th>
+            {features.map((feature) => <th key={feature}>{featureDisplayName(feature)}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {levers.map((row) => (
+            <tr key={row.lever}>
+              <td>{formatLabel(row.lever)}</td>
+              {features.map((feature) => {
+                const weight = Number(row.weights[feature])
+                return (
+                  <td key={feature} style={{ background: cellColor(weight) }} title={`${formatLabel(row.lever)} ← ${featureDisplayName(feature)}: ${weight.toFixed(3)}`}>
+                    {Number.isFinite(weight) ? weight.toFixed(2) : 'n/a'}
+                  </td>
+                )
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function DecisionRulesList({ explanation }) {
+  const rules = explanation.rules || []
+  return (
+    <ol className="explain-rule-list">
+      {rules.map((rule) => (
+        <li key={rule.lever}>
+          <strong>{formatLabel(rule.lever)}</strong>{': '}
+          {rule.feature ? (
+            <React.Fragment>
+              IF <em>{formatLabel(rule.feature)}</em> is above the national reference {rule.threshold_pct >= 0 ? '+' : ''}{Number(rule.threshold_pct).toFixed(0)}%
+              {Number.isFinite(rule.threshold_value) ? ` (≈ ${formatNumber(rule.threshold_value)})` : ''}
+              {' → '}<strong>{formatNumber(rule.value_if_above)}</strong>, otherwise → <strong>{formatNumber(rule.value_if_below)}</strong>
+            </React.Fragment>
+          ) : (
+            <React.Fragment>always <strong>{formatNumber(rule.value_if_below)}</strong></React.Fragment>
+          )}
+          {' '}(baseline {formatNumber(rule.baseline)})
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+function ClusterPolicyCards({ explanation }) {
+  const clusters = explanation.clusters || []
+  return (
+    <div className="explain-cluster-grid">
+      {clusters.map((cluster, index) => (
+        <div className="explain-cluster-card" key={cluster.id}>
+          <h4>Group {index + 1} — {cluster.provinces.length} provinces</h4>
+          <p className="control-text explain-provinces">{cluster.provinces.join(', ') || '—'}</p>
+          {Object.keys(cluster.profile || {}).length ? (
+            <p className="control-text">
+              Profile: {Object.entries(cluster.profile).map(([key, value]) => `${formatLabel(key)} ${formatNumber(value)}`).join(' · ')}
+            </p>
+          ) : null}
+          <LeverDeltaTable levers={cluster.levers} limit={8} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function PartialDependenceTable({ explanation }) {
+  const levers = explanation.levers || []
+  return (
+    <React.Fragment>
+      <p className="control-text">
+        Built from {explanation.evaluations} twin rollouts — the Gaussian-process surrogate estimates how the
+        objective responds to each lever while the others stay at the optimum.
+      </p>
+      <div className="explain-scroll">
+        <table className="explain-table">
+          <thead>
+            <tr><th>Lever</th><th>Optimised value</th><th>Baseline</th><th>Objective swing</th><th>GP uncertainty (±)</th></tr>
+          </thead>
+          <tbody>
+            {levers.map((item) => (
+              <tr key={item.lever}>
+                <td>{formatLabel(item.lever)}</td>
+                <td>{formatNumber(item.best_value)}</td>
+                <td>{formatNumber(item.baseline)}</td>
+                <td>{formatNumber(item.effect_range)}</td>
+                <td>{formatNumber(item.mean_std)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </React.Fragment>
+  )
+}
+
+function NeuralPosthocPanel({ explanation }) {
+  const importances = explanation.importances || []
+  const surrogate = explanation.surrogate
+  const maxImportance = Math.max(...importances.map((item) => item.importance), 1e-9)
+  return (
+    <React.Fragment>
+      <h4 className="explain-subtitle">Which indicators drive the network's decisions</h4>
+      {importances.length ? (
+        <div className="importance-list">
+          {importances.map((item) => (
+            <div className="importance-row" key={item.feature}>
+              <span className="importance-label">{formatLabel(item.feature)}</span>
+              <div className="importance-track">
+                <div className="importance-bar" style={{ width: `${Math.max(2, (item.importance / maxImportance) * 100)}%` }} />
+              </div>
+              <span className="importance-value">{item.importance.toFixed(3)}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="control-text">No per-province features available to audit.</p>
+      )}
+      {surrogate ? (
+        <React.Fragment>
+          <h4 className="explain-subtitle">Distilled surrogate — province segments imitating the network</h4>
+          <p className="control-text">
+            A depth-{surrogate.max_depth} decision tree reproduces the network's lever choices with{' '}
+            <strong>fidelity R² = {Number(surrogate.fidelity_r2).toFixed(2)}</strong> on held-out decisions.
+            Read the segments as an honest approximation, not the network itself.
+          </p>
+          <div className="explain-cluster-grid">
+            {(surrogate.segments || []).map((segment, index) => (
+              <div className="explain-cluster-card" key={index}>
+                <h4>{segment.conditions.join(' AND ')}</h4>
+                <p className="control-text">{segment.n_samples} decision samples</p>
+                <table className="explain-table">
+                  <thead><tr><th>Lever</th><th>Value</th><th>Baseline</th></tr></thead>
+                  <tbody>
+                    {segment.levers.map((lever) => (
+                      <tr key={lever.lever}>
+                        <td>{formatLabel(lever.lever)}</td>
+                        <td>{formatNumber(lever.value)}</td>
+                        <td>{formatNumber(lever.baseline)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+        </React.Fragment>
+      ) : null}
+    </React.Fragment>
+  )
+}
+
+function PolicyExplanation({ explanation, explainability }) {
+  if (!explanation) return null
+  let body = null
+  if (explanation.type === 'linear_weights') body = <LinearWeightsHeatmap explanation={explanation} />
+  else if (explanation.type === 'decision_rules') body = <DecisionRulesList explanation={explanation} />
+  else if (explanation.type === 'cluster_policy') body = <ClusterPolicyCards explanation={explanation} />
+  else if (explanation.type === 'partial_dependence') body = <PartialDependenceTable explanation={explanation} />
+  else if (explanation.type === 'lever_table') body = <LeverDeltaTable levers={explanation.levers} />
+  else if (explanation.type === 'neural_posthoc') body = <NeuralPosthocPanel explanation={explanation} />
+  if (!body) return null
+  return (
+    <div className="explain-section">
+      <h3 className="ethics-maps-title">
+        Why these levers — model explanation <ExplainBadge explainability={explainability} />
+      </h3>
+      {explanation.note ? <p className="control-text">{explanation.note}</p> : null}
+      {body}
+    </div>
+  )
+}
+
 function PolicyCandidates({ result, models, onAdopt, adoptedId, disabled }) {
   const candidates = result.candidates || []
   const baselineCandidate = candidates.find((candidate) => candidate.id === 'baseline') || {}
@@ -781,6 +1039,7 @@ function PolicyCandidates({ result, models, onAdopt, adoptedId, disabled }) {
           <MultiSeriesChart seriesList={welfareSeries} title={`${result.objectiveLabel} welfare trajectory`} />
         ) : null}
       </div>
+      <PolicyExplanation explanation={result.explanation} explainability={result.explainability} />
       <h3 className="ethics-maps-title">Candidate policies — the choice is yours, not the model's</h3>
       <div className="candidate-grid">
         {candidates.map((candidate) => {
@@ -959,6 +1218,192 @@ function EthicsComparison({ compareResult, models, features }) {
   )
 }
 
+const TAG_LABELS = {
+  utilitarian: 'Utilitarian corner (max total GDP)',
+  egalitarian: 'Egalitarian corner (min Gini)',
+  rawlsian: 'Rawlsian corner (max worst-off GDP)',
+}
+
+function ParetoScatter({ points, baseline, selectedIndex, onSelectPoint }) {
+  const canvasRef = useRef(null)
+  const chartRef = useRef(null)
+
+  useEffect(() => {
+    if (!canvasRef.current || !points.length) return undefined
+
+    const frontier = {
+      label: 'Pareto frontier',
+      data: points.map((point, index) => ({ x: point.finalGini, y: point.finalGdpTotal, index })),
+      backgroundColor: points.map((point, index) => {
+        if (index === selectedIndex) return '#102038'
+        const tag = (point.tags || [])[0]
+        return tag ? OBJECTIVE_COLORS[tag] || '#0f766e' : '#0f766e'
+      }),
+      pointRadius: points.map((point, index) => ((point.tags || []).length || index === selectedIndex ? 6 : 4)),
+      pointHoverRadius: 8,
+    }
+    const baselinePoint = {
+      label: 'Baseline (historical levers)',
+      data: baseline ? [{ x: baseline.finalGini, y: baseline.finalGdpTotal }] : [],
+      backgroundColor: BASELINE_SERIES_COLOR,
+      pointStyle: 'rectRot',
+      pointRadius: 7,
+    }
+
+    if (chartRef.current) chartRef.current.destroy()
+    chartRef.current = new Chart(canvasRef.current, {
+      type: 'scatter',
+      data: { datasets: [frontier, baselinePoint] },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        onClick: (_event, elements) => {
+          if (!elements.length || !onSelectPoint) return
+          const element = elements[0]
+          if (element.datasetIndex === 0) onSelectPoint(element.index)
+        },
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 18 } },
+          title: {
+            display: true,
+            text: 'Efficiency vs inequality — every point is a non-dominated policy',
+            color: '#102038',
+            font: { size: 14, weight: '700' },
+          },
+          tooltip: {
+            callbacks: {
+              label: (context) => {
+                if (context.datasetIndex === 1) {
+                  return `Baseline: GDP ${formatNumber(context.parsed.y)}, Gini ${context.parsed.x.toFixed(3)}`
+                }
+                const point = points[context.dataIndex]
+                const tags = (point.tags || []).map((tag) => TAG_LABELS[tag] || tag).join('; ')
+                return [
+                  `GDP ${formatNumber(point.finalGdpTotal)}, Gini ${point.finalGini.toFixed(3)}`,
+                  `Worst-off province GDP ${formatNumber(point.worstProvinceGdp)}`,
+                  tags || null,
+                ].filter(Boolean)
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            title: { display: true, text: 'Inter-provincial Gini (lower = more equal)', color: '#5b6f89' },
+            ticks: { color: '#5b6f89' },
+            grid: { color: 'rgba(16, 32, 56, 0.06)' },
+          },
+          y: {
+            title: { display: true, text: 'Total national GDP (final year)', color: '#5b6f89' },
+            ticks: { color: '#5b6f89' },
+            grid: { color: 'rgba(16, 32, 56, 0.08)' },
+          },
+        },
+      },
+    })
+
+    return () => {
+      if (chartRef.current) {
+        chartRef.current.destroy()
+        chartRef.current = null
+      }
+    }
+  }, [points, baseline, selectedIndex])
+
+  if (!points.length) return <div className="empty-state">No frontier points yet.</div>
+  return (
+    <div className="chart-canvas" style={{ height: 360 }}>
+      <canvas ref={canvasRef} />
+    </div>
+  )
+}
+
+function ParetoFrontier({ paretoResult, parameterMeta }) {
+  const [selectedIndex, setSelectedIndex] = useState(null)
+  const points = paretoResult.points || []
+  const baseline = paretoResult.baseline || null
+  const selected = selectedIndex != null ? points[selectedIndex] : null
+
+  const baselineByKey = useMemo(() => {
+    const map = {}
+    ;(parameterMeta || []).forEach((item) => { map[item.key] = item })
+    return map
+  }, [parameterMeta])
+
+  const selectedLevers = useMemo(() => {
+    if (!selected) return []
+    return Object.entries(selected.levers || {})
+      .map(([key, value]) => {
+        const meta = baselineByKey[key] || {}
+        const span = Math.max(
+          (Number.isFinite(meta.max) ? meta.max : Number(value)) - (Number.isFinite(meta.min) ? meta.min : 0),
+          1e-9,
+        )
+        return {
+          key,
+          value: Number(value),
+          baseline: Number(meta.baseline),
+          shift: Number.isFinite(Number(meta.baseline)) ? Math.abs(Number(value) - Number(meta.baseline)) / span : 0,
+        }
+      })
+      .sort((a, b) => b.shift - a.shift)
+  }, [selected, baselineByKey])
+
+  return (
+    <React.Fragment>
+      <p className="control-text" style={{ marginBottom: 10 }}>
+        NSGA-II evolved {paretoResult.evaluations} uniform national lever vectors over {paretoResult.generations} generations
+        ({paretoResult.horizon} years, through {paretoResult.finalYear}). Every point below is non-dominated: improving one of
+        total GDP, inequality, or the worst-off province necessarily worsens another. The named ethical frameworks are corners
+        of this frontier, not separate truths.
+      </p>
+      <ParetoScatter points={points} baseline={baseline} selectedIndex={selectedIndex} onSelectPoint={setSelectedIndex} />
+      <div className="explain-scroll" style={{ marginTop: 12 }}>
+        <table className="explain-table pareto-table">
+          <thead>
+            <tr><th>#</th><th>Total GDP</th><th>Gini</th><th>Worst-off GDP</th><th>Character</th></tr>
+          </thead>
+          <tbody>
+            <tr className="ethics-table-baseline">
+              <td>—</td>
+              <td>{formatNumber(baseline && baseline.finalGdpTotal)}</td>
+              <td>{baseline && Number.isFinite(baseline.finalGini) ? baseline.finalGini.toFixed(3) : 'n/a'}</td>
+              <td>{formatNumber(baseline && baseline.worstProvinceGdp)}</td>
+              <td>Baseline (historical levers)</td>
+            </tr>
+            {points.map((point, index) => (
+              <tr
+                key={index}
+                className={index === selectedIndex ? 'pareto-row-selected' : ''}
+                onClick={() => setSelectedIndex(index === selectedIndex ? null : index)}
+              >
+                <td>{index + 1}</td>
+                <td>{formatNumber(point.finalGdpTotal)}</td>
+                <td>{point.finalGini.toFixed(3)}</td>
+                <td>{formatNumber(point.worstProvinceGdp)}</td>
+                <td>{(point.tags || []).map((tag) => TAG_LABELS[tag] || tag).join('; ') || 'Interior trade-off'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {selected ? (
+        <div className="explain-section">
+          <h3 className="ethics-maps-title">Levers of frontier point #{selectedIndex + 1} (applied to every province)</h3>
+          <LeverDeltaTable
+            levers={selectedLevers.map((item) => {
+              const meta = baselineByKey[item.key] || {}
+              return { lever: item.key, value: item.value, baseline: item.baseline, min: meta.min, max: meta.max }
+            })}
+          />
+        </div>
+      ) : (
+        <p className="control-text" style={{ marginTop: 8 }}>Click a point or a table row to inspect that policy's levers.</p>
+      )}
+    </React.Fragment>
+  )
+}
+
 function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -989,6 +1434,8 @@ function App() {
   const [isOptimizing, setIsOptimizing] = useState(false)
   const [optimizeResult, setOptimizeResult] = useState(null)
   const [isComparing, setIsComparing] = useState(false)
+  const [paretoResult, setParetoResult] = useState(null)
+  const [isPareto, setIsPareto] = useState(false)
   const [compareResult, setCompareResult] = useState(null)
   const [adoptedCandidateId, setAdoptedCandidateId] = useState(null)
   const [runProgress, setRunProgress] = useState(null)
@@ -1285,6 +1732,30 @@ function App() {
     }
   }
 
+  async function runPareto() {
+    try {
+      setIsPareto(true)
+      setSimulationLog('')
+      setParetoResult(null)
+      setRunProgress({ percent: 0, message: 'Starting Pareto frontier search...' })
+      // Read-only what-if: the twin state, year, and allocations are untouched.
+      const response = await window.seraApi.paretoFront({
+        currentYear,
+        currentStateRows: latestStateRows,
+        horizon: optimizeHorizon,
+        iterations: optimizeIterations,
+        spendingIntensityPct,
+        reservePool,
+      })
+      setParetoResult(response)
+    } catch (paretoError) {
+      setError(paretoError.message || String(paretoError))
+    } finally {
+      setIsPareto(false)
+      setRunProgress(null)
+    }
+  }
+
   if (loading) {
     return (
       <div className="loading">
@@ -1319,6 +1790,16 @@ function App() {
           <p className="subtitle">
             Select any Italian province on the map, tune the annual allocators, and advance the digital twin one year at a time. The chart below keeps the historical series visible so each intervention can be read against the recent trend.
           </p>
+          <div className="hero-guide">
+            <h2>How to use the control room</h2>
+            <ol>
+              <li><strong>Pick a province</strong> on the map to open its allocator editor and current indicators.</li>
+              <li><strong>Tune the allocators</strong> — spending levers draw from the shared national resource pool shown on the right.</li>
+              <li><strong>Simulate the next year</strong> to advance the twin and read the result against the historical trend below.</li>
+              <li><strong>Ask the AI for policies</strong>: choose a model and an ethical objective, then optimize. Candidates appear below with their trade-offs; nothing is applied until you adopt one.</li>
+              <li><strong>Study the ethics</strong>: compare all frameworks side by side, or map the efficiency–equity frontier — both are what-if analyses that never touch the twin.</li>
+            </ol>
+          </div>
         </div>
         <div className="hero-controls">
           <div className="control-stack">
@@ -1343,7 +1824,7 @@ function App() {
                   : 'Select a province on the map.'}
               </p>
             </div>
-            <button className="primary-button" onClick={runSimulation} disabled={isSimulating || isOptimizing || isComparing || !latestStateRows.length}>
+            <button className="primary-button" onClick={runSimulation} disabled={isSimulating || isOptimizing || isComparing || isPareto || !latestStateRows.length}>
               {isSimulating ? 'Running simulation...' : `Simulate ${Number(currentYear) + 1}`}
             </button>
             {isSimulating && <RunProgress progress={runProgress} />}
@@ -1354,7 +1835,7 @@ function App() {
                 className="indicator-select model-select"
                 value={selectedModel}
                 onChange={(event) => setSelectedModel(event.target.value)}
-                disabled={isOptimizing || isComparing}
+                disabled={isOptimizing || isComparing || isPareto}
               >
                 {models.map((model) => (
                   <option key={model.id} value={model.id}>{model.label}</option>
@@ -1362,14 +1843,22 @@ function App() {
               </select>
               {(() => {
                 const meta = models.find((model) => model.id === selectedModel)
-                return meta ? <p className="control-text model-desc">{meta.description}</p> : null
+                if (!meta) return null
+                return (
+                  <React.Fragment>
+                    {meta.explainability ? (
+                      <p className="model-desc"><ExplainBadge explainability={meta.explainability} /></p>
+                    ) : null}
+                    <p className="control-text model-desc">{meta.description}</p>
+                  </React.Fragment>
+                )
               })()}
               <p className="control-label">Ethical objective</p>
               <select
                 className="indicator-select model-select"
                 value={selectedObjective}
                 onChange={(event) => setSelectedObjective(event.target.value)}
-                disabled={isOptimizing || isComparing}
+                disabled={isOptimizing || isComparing || isPareto}
               >
                 {objectives.map((objective) => (
                   <option key={objective.id} value={objective.id}>{objective.label}</option>
@@ -1403,16 +1892,20 @@ function App() {
                   />
                 </label>
               </div>
-              <button className="primary-button" onClick={runModel} disabled={isOptimizing || isSimulating || isComparing || !latestStateRows.length}>
+              <button className="primary-button" onClick={runModel} disabled={isOptimizing || isSimulating || isComparing || isPareto || !latestStateRows.length}>
                 {isOptimizing
                   ? 'Optimizing…'
                   : `Optimize ${(objectives.find((o) => o.id === selectedObjective) || {}).label || 'objective'} over ${optimizeHorizon}y`}
               </button>
               {isOptimizing && <RunProgress progress={runProgress} />}
-              <button className="primary-button" onClick={runComparison} disabled={isOptimizing || isSimulating || isComparing || !latestStateRows.length}>
+              <button className="primary-button" onClick={runComparison} disabled={isOptimizing || isSimulating || isComparing || isPareto || !latestStateRows.length}>
                 {isComparing ? 'Comparing frameworks…' : `Compare all ${objectives.length || 4} ethical frameworks`}
               </button>
               {isComparing && <RunProgress progress={runProgress} />}
+              <button className="primary-button" onClick={runPareto} disabled={isOptimizing || isSimulating || isComparing || isPareto || !latestStateRows.length}>
+                {isPareto ? 'Mapping the frontier…' : 'Map the efficiency–equity frontier (Pareto)'}
+              </button>
+              {isPareto && <RunProgress progress={runProgress} />}
             </div>
           </div>
         </div>
@@ -1549,23 +2042,21 @@ function App() {
         </div>
       </section>
 
-      <section className="chart-panel">
-        <h2>AI policy studio</h2>
-        <p className="chart-subtitle">
-          The selected model proposes graded policy candidates optimized for the selected ethical objective — what "best for Italy" means is your choice, not the model's. Nothing is applied to the twin until you adopt a candidate.
-        </p>
-        {optimizeResult ? (
+      {optimizeResult ? (
+        <section className="chart-panel">
+          <h2>Policy candidates</h2>
+          <p className="chart-subtitle">
+            The selected model proposes graded policy candidates optimized for the selected ethical objective — what "best for Italy" means is your choice, not the model's. Nothing is applied to the twin until you adopt a candidate.
+          </p>
           <PolicyCandidates
             result={optimizeResult}
             models={models}
             onAdopt={adoptCandidate}
             adoptedId={adoptedCandidateId}
-            disabled={isSimulating || isOptimizing || isComparing}
+            disabled={isSimulating || isOptimizing || isComparing || isPareto}
           />
-        ) : (
-          <div className="empty-state">Run a model to get candidate policies with their trade-offs.</div>
-        )}
-      </section>
+        </section>
+      ) : null}
 
       <section className="chart-panel">
         <h2>Ethics equity dashboard</h2>
@@ -1576,7 +2067,21 @@ function App() {
           <EthicsComparison compareResult={compareResult} models={models} features={features} />
         ) : (
           <div className="empty-state">
-            Use "Compare all ethical frameworks" in the AI policy studio to train the selected model under every objective and see the trade-offs side by side.
+            Use "Compare all ethical frameworks" in the control panel above to train the selected model under every objective and see the trade-offs side by side.
+          </div>
+        )}
+      </section>
+
+      <section className="chart-panel">
+        <h2>Efficiency–equity frontier</h2>
+        <p className="chart-subtitle">
+          NSGA-II evolves national lever vectors against three objectives at once — total GDP, inter-provincial inequality, and the worst-off province — and shows the whole Pareto frontier. Instead of asking which ethical framework is right, see exactly how much efficiency each unit of equity costs. Read-only: nothing is applied to the twin.
+        </p>
+        {paretoResult ? (
+          <ParetoFrontier paretoResult={paretoResult} parameterMeta={parameterMeta} />
+        ) : (
+          <div className="empty-state">
+            Use "Map the efficiency–equity frontier" in the control panel above to chart the trade-off space the ethical objectives live in.
           </div>
         )}
       </section>

@@ -118,6 +118,7 @@ function createWindow() {
     minHeight: 760,
     backgroundColor: '#edf3fb',
     autoHideMenuBar: true,
+    icon: path.join(__dirname, 'assets', 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -187,6 +188,20 @@ ipcMain.handle('ui:compare-objectives', async (event, payload) => {
     event.sender,
   )
   event.sender.send('ui:simulation-log', `Ethics comparison completed through ${response.finalYear}.\n`)
+  return response
+})
+
+ipcMain.handle('ui:pareto-front', async (event, payload) => {
+  event.sender.send('ui:simulation-log', 'Mapping the efficiency-equity frontier with NSGA-II...\n')
+  const response = await runBridgeAsync(
+    'pareto-front',
+    {
+      ...payload,
+      modelPath: path.join(REPO_ROOT, 'twin_models.joblib'),
+    },
+    event.sender,
+  )
+  event.sender.send('ui:simulation-log', `Pareto frontier mapped through ${response.finalYear} (${response.evaluations} rollouts).\n`)
   return response
 })
 

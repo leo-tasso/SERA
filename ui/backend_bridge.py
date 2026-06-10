@@ -3,6 +3,7 @@ import sys
 import traceback
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -21,6 +22,7 @@ from sera.twin.objectives import (
     build_objective,
     gini,
 )
+from sera.twin.pareto import nsga2_front
 from sera.twin.policy import (
     BlendedPolicy,
     ParamSpec,
@@ -519,6 +521,8 @@ def optimize_policy(payload: dict) -> dict:
 
     train_info: dict = {}
     candidates: list[dict] = []
+    explanation = None
+    explainability = None
     if model_id == 'baseline':
         emit_progress(50, 'Rolling out baseline trajectory...')
         candidates.append(
@@ -545,6 +549,16 @@ def optimize_policy(payload: dict) -> dict:
 
         emit_progress(10, f'Training {model_id} ({objective.label}): iteration 0/{iterations}')
         train_info = policy.fit(env, iterations=iterations, progress=progress)
+
+        # Explanation of the trained policy (white-box parameters, gray-box
+        # partial dependence, or black-box post-hoc audit, by model class).
+        explainability = policy.explainability
+        emit_progress(79, 'Building the policy explanation...')
+        try:
+            explanation = policy.explain(env)
+        except Exception:
+            traceback.print_exc(file=sys.stderr)
+            explanation = None
 
         emit_progress(80, 'Rolling out full intervention + sensitivity band...')
         candidates.append(
@@ -581,6 +595,8 @@ def optimize_policy(payload: dict) -> dict:
         'trainInfo': train_info,
         'candidates': candidates,
         'sensitivityScales': SENSITIVITY_RULE_SCALES,
+        'explainability': explainability,
+        'explanation': explanation,
     }
 
 
@@ -735,6 +751,111 @@ def compare_objectives(payload: dict) -> dict:
     }
 
 
+def pareto_front(payload: dict) -> dict:
+    """Map the efficiency–equity frontier with NSGA-II (read-only what-if).
+
+    Evolves uniform national lever vectors against three objectives at once —
+    total GDP, inter-provincial Gini, and the worst-off province's GDP — and
+    returns the non-dominated front. Nothing is trained per framework and
+    nothing is applied to the twin: the frontier shows what each ethical
+    dropdown choice would be a corner of.
+    """
+    current_state = pd.DataFrame(payload.get('currentStateRows') or [])
+    if current_state.empty:
+        raise ValueError('currentStateRows is required to map the Pareto frontier.')
+    if 'area_code' not in current_state.columns or 'year' not in current_state.columns:
+        raise ValueError('currentStateRows must contain area_code and year columns.')
+
+    current_state = current_state.copy()
+    current_state['year'] = current_state['year'].astype(int)
+    current_state = current_state.sort_values('area_code').reset_index(drop=True)
+    current_year = int(payload.get('currentYear') or current_state['year'].max())
+
+    horizon = max(1, min(int(payload.get('horizon') or 20), 50))
+    generations = max(1, min(int(payload.get('iterations') or 6), 40))
+    popsize = max(4, min(int(payload.get('popsize') or 12), 40))
+    spending_intensity_pct = float(payload.get('spendingIntensityPct') or get_spending_intensity_pct())
+    reserve_pool = float(payload.get('reservePool') or 0.0)
+    final_year = current_year + horizon
+
+    emit_progress(2, 'Loading trained twin...')
+    model_path = Path(payload.get('modelPath') or REPO_ROOT / 'twin_models.joblib')
+    trainer = ModelTrainer.load(model_path)
+    indicator_columns = [column for column in current_state.columns if column not in {'area_code', 'year'}]
+    simulator = DigitalTwinSimulator(trainer, indicator_columns, list(ANNUAL_PARAMETERS.keys()))
+    param_specs = [
+        ParamSpec(item['key'], item['baseline'], item['min'], item['max'])
+        for item in parameter_metadata()
+    ]
+    env = RolloutEnv(
+        simulator=simulator,
+        initial_state=current_state,
+        indicator_cols=indicator_columns,
+        param_specs=param_specs,
+        provinces=PROVINCE_SIGLAS_110,
+        horizon=horizon,
+        base_year=current_year,
+        constraint_fn=_make_constraint_fn(spending_intensity_pct),
+        reserve_pool=reserve_pool,
+    )
+
+    emit_progress(4, 'Computing baseline reference point...')
+    baseline_policy = build_policy('baseline', param_specs)
+    baseline_traj, baseline_gdp, _w, _a, _r = env.rollout(baseline_policy)
+    baseline_report = _trajectory_report(baseline_traj, baseline_gdp, current_year, final_year)
+    baseline_report.pop('finalGdpByProvince', None)
+
+    def progress(generation: int, total: int, evaluations: int) -> None:
+        print(
+            f'Pareto search: generation {generation}/{total} '
+            f'({evaluations} rollouts so far)',
+            file=sys.stderr,
+            flush=True,
+        )
+        emit_progress(
+            6 + 90 * generation / max(total, 1),
+            f'Pareto search: generation {generation}/{total}',
+        )
+
+    result = nsga2_front(
+        env, popsize=popsize, generations=generations, seed=0, progress=progress
+    )
+
+    emit_progress(97, 'Collecting frontier points...')
+    points = []
+    for point in result['points']:
+        x = point['x']
+        metrics = point['metrics']
+        levers = {
+            spec.key: float(spec.min + float(np.clip(x[col], 0.0, 1.0)) * max(spec.max - spec.min, 0.0))
+            for col, spec in enumerate(param_specs)
+        }
+        points.append(
+            {
+                'levers': levers,
+                'finalGdpTotal': float(metrics['gdp_total']),
+                'finalGini': float(metrics['gini']),
+                'worstProvinceGdp': float(metrics['worst_gdp']),
+                'reservePool': float(metrics.get('reserve', 0.0)),
+                'tags': list(point.get('tags', [])),
+            }
+        )
+
+    return {
+        'horizon': horizon,
+        'finalYear': final_year,
+        'generations': generations,
+        'popsize': popsize,
+        'evaluations': int(result['evaluations']),
+        'baseline': {
+            'finalGdpTotal': baseline_report['finalGdpTotal'],
+            'finalGini': baseline_report['finalGini'],
+            'worstProvinceGdp': baseline_report['worstProvinceGdp'],
+        },
+        'points': points,
+    }
+
+
 def main() -> None:
     command = sys.argv[1] if len(sys.argv) > 1 else 'bootstrap'
     raw_input = ''
@@ -755,6 +876,9 @@ def main() -> None:
     elif command == 'compare-objectives':
         print('Training the policy model once per ethical objective...', file=sys.stderr)
         result = compare_objectives(payload)
+    elif command == 'pareto-front':
+        print('Mapping the efficiency-equity frontier with NSGA-II...', file=sys.stderr)
+        result = pareto_front(payload)
     else:
         raise ValueError(f'Unknown bridge command: {command}')
 

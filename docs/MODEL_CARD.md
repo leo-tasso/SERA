@@ -19,10 +19,24 @@ SERA contains three model layers:
    trained models' relative response saturates that cap for almost any lever deviation,
    so the cap value *is* the effective size of the ML layer's contribution, and the
    differentiated lever→indicator structure comes mostly from the hand-written rules.
-3. **Policy models** (`sera.twin.policy`) — gradient-free optimizers that drive the twin:
-   - `neural`: a small pure-NumPy MLP applied per province, trained with mirrored-sampling
-     Evolution Strategies;
-   - `uniform_cem`: one shared national lever vector, found with the Cross-Entropy Method;
+3. **Policy models** (`sera.twin.policy`) — gradient-free optimizers that drive the twin,
+   spanning a deliberate explainability spectrum (each carries an `explainability` tag and
+   an `explain()` artifact rendered in the UI):
+   - `neural` (**black box**): a small pure-NumPy MLP applied per province, trained with
+     mirrored-sampling Evolution Strategies; audited post hoc (`sera.twin.explain`) with
+     permutation importance and a distilled surrogate decision tree whose fidelity (held-out
+     R² versus the network's own decisions) is reported, not assumed;
+   - `linear` (**white box**): the identical per-province setup with no hidden layer,
+     trained with the same ES loop — its signed weight matrix is the explanation, and any
+     score gap versus `neural` is a measured price of transparency;
+   - `rules` (**white box**): one IF/THEN threshold rule per lever (indicator, threshold,
+     two levels), found with the Cross-Entropy Method; the whole policy prints as sentences;
+   - `cluster_cem` (**white box**): provinces k-means-clustered on their starting
+     indicators, one shared lever vector per cluster (regional policy packages), CEM;
+   - `uniform_cem` (**white box**): one shared national lever vector, Cross-Entropy Method;
+   - `uniform_bayes` (**gray box**): the same shared vector found with Gaussian-process
+     Bayesian optimization — far fewer twin rollouts, and the surrogate yields per-lever
+     partial-dependence curves with the GP's own uncertainty;
    - `baseline`: historical levers (no optimization);
    - `BlendedPolicy`: any policy's levers scaled toward baseline (used for the "moderate
      intervention" candidate).
@@ -30,6 +44,11 @@ SERA contains three model layers:
    All trainable policies maximize a pluggable **ethical objective**
    (`sera.twin.objectives`): utilitarian total GDP, Rawlsian maximin, egalitarian Sen
    welfare, or a multi-indicator wellbeing composite.
+
+4. **Pareto frontier search** (`sera.twin.pareto`) — NSGA-II over uniform national lever
+   vectors against three objectives at once (total GDP, inter-provincial Gini, worst-off
+   province), returning the non-dominated front with the single-objective ethical
+   frameworks tagged as its corners. Read-only what-if; never advances the twin.
 
 - **Developers:** SERA project (educational/research prototype).
 - **Model date:** 2026.
@@ -90,6 +109,10 @@ consistent scenarios, not predictions.
   beyond the budget constraint.
 - **Optimizers exploit the simulator, not reality.** A policy that scores well has found
   a good point in the *model*; transferring that claim to Italy is a category error.
+- **Explanations explain the policy, not the world.** The weight matrices, rules, and
+  partial-dependence curves describe how a *policy model* maps indicators to levers, and
+  the post-hoc surrogate imitates the network only up to its stated fidelity. None of
+  them validate the twin's causal assumptions.
 
 ## Ethical considerations
 

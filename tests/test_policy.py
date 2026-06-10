@@ -7,7 +7,11 @@ import pytest
 from sera.twin.objectives import RawlsianObjective
 from sera.twin.policy import (
     BaselinePolicy,
+    BayesianUniformPolicy,
     BlendedPolicy,
+    ClusterLeverPolicy,
+    DecisionListPolicy,
+    LinearPolicy,
     NeuralPolicy,
     ParamSpec,
     PolicyModel,
@@ -224,17 +228,170 @@ class TestPolicies:
         assert BlendedPolicy(inner, blend=-1.0).blend == 0.0
 
 
+class TestLinearPolicy:
+    def test_decide_respects_bounds(self):
+        env = make_env()
+        allocations = LinearPolicy(SPECS, seed=1).decide(make_state(), 0, env)
+        for province in PROVINCES:
+            for spec in SPECS:
+                assert spec.min <= allocations[province][spec.key] <= spec.max
+
+    def test_deterministic_for_a_seed(self):
+        env = make_env()
+        a = LinearPolicy(SPECS, seed=5).decide(make_state(), 0, env)
+        b = LinearPolicy(SPECS, seed=5).decide(make_state(), 0, env)
+        assert a == b
+
+    def test_fit_improves_or_keeps_score(self):
+        env = make_env(horizon=2)
+        policy = LinearPolicy(SPECS, seed=0)
+        info = policy.fit(env, iterations=3)
+        assert info["best_score"] >= info["start_score"]
+        assert env.score(policy) == pytest.approx(info["best_score"])
+
+    def test_explain_exposes_signed_weight_matrix(self):
+        env = make_env()
+        policy = LinearPolicy(SPECS, seed=0)
+        policy.prepare(env)
+        explanation = policy.explain(env)
+        assert explanation["type"] == "linear_weights"
+        assert explanation["features"][:2] == ["bias", "year_position"]
+        assert len(explanation["levers"]) == len(SPECS)
+        for row in explanation["levers"]:
+            assert set(row["weights"]) == set(explanation["features"])
+
+
+class TestDecisionListPolicy:
+    def test_decide_in_bounds_with_at_most_two_levels_per_lever(self):
+        env = make_env()
+        allocations = DecisionListPolicy(SPECS, seed=2).decide(make_state(), 0, env)
+        for spec in SPECS:
+            values = {round(allocations[p][spec.key], 9) for p in PROVINCES}
+            assert len(values) <= 2  # IF/THEN: one level above, one below
+            for p in PROVINCES:
+                assert spec.min <= allocations[p][spec.key] <= spec.max
+
+    def test_fit_improves_or_keeps_score(self):
+        env = make_env(horizon=2)
+        policy = DecisionListPolicy(SPECS, seed=0)
+        info = policy.fit(env, iterations=3)
+        assert info["best_score"] >= info["start_score"]
+        assert env.score(policy) == pytest.approx(info["best_score"])
+
+    def test_explain_emits_one_rule_per_lever(self):
+        env = make_env()
+        policy = DecisionListPolicy(SPECS, seed=0)
+        policy.prepare(env)
+        explanation = policy.explain(env)
+        assert explanation["type"] == "decision_rules"
+        assert [rule["lever"] for rule in explanation["rules"]] == [s.key for s in SPECS]
+        for rule, spec in zip(explanation["rules"], SPECS):
+            assert rule["feature"] in policy.feature_keys
+            assert spec.min <= rule["value_if_above"] <= spec.max
+            assert spec.min <= rule["value_if_below"] <= spec.max
+
+
+class TestClusterLeverPolicy:
+    def test_same_cluster_means_same_levers(self):
+        env = make_env()
+        policy = ClusterLeverPolicy(SPECS, n_clusters=2, seed=0)
+        allocations = policy.decide(make_state(), 0, env)
+        for province in PROVINCES:
+            cluster = policy.assignments[province]
+            peers = [p for p in PROVINCES if policy.assignments[p] == cluster]
+            for peer in peers:
+                assert allocations[peer] == allocations[province]
+        distinct = {tuple(sorted(a.items())) for a in allocations.values()}
+        assert len(distinct) <= 2
+
+    def test_decide_respects_bounds(self):
+        env = make_env()
+        allocations = ClusterLeverPolicy(SPECS, n_clusters=2, seed=0).decide(make_state(), 0, env)
+        for province in PROVINCES:
+            for spec in SPECS:
+                assert spec.min <= allocations[province][spec.key] <= spec.max
+
+    def test_fit_improves_or_keeps_score(self):
+        env = make_env(horizon=2)
+        policy = ClusterLeverPolicy(SPECS, n_clusters=2, seed=0)
+        info = policy.fit(env, iterations=3)
+        assert info["best_score"] >= info["start_score"]
+        assert env.score(policy) == pytest.approx(info["best_score"])
+        assert info["clusters"] == 2
+
+    def test_explain_covers_every_province(self):
+        env = make_env()
+        policy = ClusterLeverPolicy(SPECS, n_clusters=2, seed=0)
+        policy.prepare(env)
+        explanation = policy.explain(env)
+        assert explanation["type"] == "cluster_policy"
+        covered = [p for cluster in explanation["clusters"] for p in cluster["provinces"]]
+        assert sorted(covered) == sorted(PROVINCES)
+        for cluster in explanation["clusters"]:
+            assert len(cluster["levers"]) == len(SPECS)
+
+
+class TestBayesianUniformPolicy:
+    def test_decide_is_identical_across_provinces(self):
+        env = make_env()
+        allocations = BayesianUniformPolicy(SPECS, seed=1).decide(make_state(), 0, env)
+        first = allocations[PROVINCES[0]]
+        for province in PROVINCES:
+            assert allocations[province] == first
+
+    def test_fit_improves_or_keeps_score(self):
+        env = make_env(horizon=2)
+        policy = BayesianUniformPolicy(SPECS, seed=0)
+        info = policy.fit(env, iterations=2, n_init=3)
+        assert info["best_score"] >= info["start_score"]
+        assert env.score(policy) == pytest.approx(info["best_score"])
+        assert info["evaluations"] == 3 + 2  # initial design + one rollout per BO step
+
+    def test_explain_partial_dependence_after_fit(self):
+        env = make_env(horizon=2)
+        policy = BayesianUniformPolicy(SPECS, seed=0)
+        policy.fit(env, iterations=2, n_init=3)
+        explanation = policy.explain(env)
+        assert explanation["type"] == "partial_dependence"
+        assert len(explanation["levers"]) == len(SPECS)
+        ranges = [item["effect_range"] for item in explanation["levers"]]
+        assert ranges == sorted(ranges, reverse=True)
+        for item in explanation["levers"]:
+            assert len(item["grid"]) == 9
+            for point in item["grid"]:
+                assert np.isfinite(point["mean"]) and point["std"] >= 0.0
+
+    def test_explain_before_fit_falls_back_to_lever_table(self):
+        env = make_env()
+        policy = BayesianUniformPolicy(SPECS, seed=0)
+        explanation = policy.explain(env)
+        assert explanation["type"] == "lever_table"
+
+
 class TestRegistry:
     def test_available_models_metadata(self):
         models = {m["id"]: m for m in available_models()}
         assert models["baseline"]["trainable"] is False
         assert models["neural"]["trainable"] is True
         assert models["uniform_cem"]["trainable"] is True
+        for model_id in ("linear", "rules", "cluster_cem", "uniform_bayes"):
+            assert models[model_id]["trainable"] is True
+
+    def test_explainability_spectrum_is_exposed(self):
+        models = {m["id"]: m for m in available_models()}
+        assert models["neural"]["explainability"] == "black-box"
+        assert models["uniform_bayes"]["explainability"] == "gray-box"
+        for model_id in ("baseline", "linear", "rules", "cluster_cem", "uniform_cem"):
+            assert models[model_id]["explainability"] == "white-box"
 
     def test_build_policy_by_id(self):
         assert isinstance(build_policy("baseline", SPECS), BaselinePolicy)
         assert isinstance(build_policy("neural", SPECS), NeuralPolicy)
         assert isinstance(build_policy("uniform_cem", SPECS), UniformLeverPolicy)
+        assert isinstance(build_policy("linear", SPECS), LinearPolicy)
+        assert isinstance(build_policy("rules", SPECS), DecisionListPolicy)
+        assert isinstance(build_policy("cluster_cem", SPECS), ClusterLeverPolicy)
+        assert isinstance(build_policy("uniform_bayes", SPECS), BayesianUniformPolicy)
 
     def test_build_policy_resolves_legacy_gdp_nn_alias(self):
         assert isinstance(build_policy("gdp_nn", SPECS), NeuralPolicy)

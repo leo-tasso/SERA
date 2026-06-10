@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('seraApi', {
   simulateNextYear: (payload) => ipcRenderer.invoke('ui:simulate-next-year', payload),
   optimizePolicy: (payload) => ipcRenderer.invoke('ui:optimize-policy', payload),
   compareObjectives: (payload) => ipcRenderer.invoke('ui:compare-objectives', payload),
+  paretoFront: (payload) => ipcRenderer.invoke('ui:pareto-front', payload),
   onSimulationLog: (callback) => {
     const listener = (_event, message) => callback(message)
     ipcRenderer.on('ui:simulation-log', listener)

@@ -45,12 +45,47 @@ The **ethics equity dashboard** trains the same model under all four frameworks 
 the diverging futures side by side — including per-province "who gains, who loses" maps —
 so the distributional consequences of the choice are inspectable rather than implied.
 
+The **efficiency–equity frontier** drops the framing of choosing a framework entirely:
+an NSGA-II search (`sera.twin.pareto`) evolves policies against total GDP, inter-provincial
+Gini, and the worst-off province *simultaneously* and plots the whole Pareto frontier.
+The named ethical frameworks appear as tagged corners of that curve — the trade-off is
+shown as a continuum to be inspected, not a dropdown to be trusted.
+
 Two further value judgments worth naming:
 
 - **The unit of fairness is the province.** Within-province inequality (rich and poor
   households in Milan) is invisible to every objective.
 - **GDP per capita summed across provinces** is the "national GDP" proxy. It is not
   population-weighted; small provinces weigh as much as large ones.
+
+## Explainability is a choice with a measurable price
+
+A policy that allocates public money should be *contestable*: someone affected by it must
+be able to see why their province got the levers it got. SERA therefore ships policy
+models across a deliberate explainability spectrum, each labeled with a badge in the UI
+and each producing an explanation artifact next to its candidates:
+
+| Model | Badge | What you can audit |
+| --- | --- | --- |
+| Linear policy | White box | The full signed weight matrix: every lever's response to every indicator |
+| Rule list | White box | One IF/THEN sentence per lever — printable, contestable |
+| Regional clusters | White box | Cluster membership + one lever table per cluster |
+| Uniform (CEM) | White box | A single national lever table |
+| Uniform (Bayesian) | Gray box | GP partial-dependence per lever, with the surrogate's own uncertainty |
+| Neural network | Black box + audit | Permutation importance + a distilled decision tree with an honest fidelity score |
+
+Three commitments behind this design:
+
+- **The transparent models compete on equal terms.** The linear policy trains with the
+  same evolution-strategy loop as the neural one, so the score difference between them is
+  a *measured* price of transparency, visible per run — not an assumption in either
+  direction.
+- **Post-hoc explanations state their own limits.** The neural policy's surrogate tree
+  reports its fidelity (held-out R² against the network's decisions); a segment list with
+  fidelity 0.6 is presented as a sketch, not as the policy.
+- **Explaining the policy is not validating the twin.** Every artifact describes how a
+  model maps indicators to levers inside a simulation whose causal core is hand-written
+  (see below). Explainability here serves contestability, not proof of correctness.
 
 ## Honesty about uncertainty
 
@@ -100,7 +135,7 @@ anticipates deliberately:
 | Risk management & known limitations | This document; model card "Limitations" |
 | Data governance | Datasheet (provenance, gaps, preprocessing) |
 | Technical documentation | README, model card, datasheet |
-| Transparency to users | In-UI uncertainty banner; objective descriptions |
+| Transparency to users | In-UI uncertainty banner; objective descriptions; explainability badges and per-run explanation artifacts |
 | Human oversight (Art. 14) | Candidate/adopt flow; baseline as first-class choice |
 | Accuracy & robustness | Sensitivity band; realism caps; documented validation gaps |
 

@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <clipPath id="frame">
+      <rect width="256" height="256" rx="56"/>
+    </clipPath>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b1a55" stop-opacity="0"/>
+      <stop offset="0.6" stop-color="#c84a44"/>
+      <stop offset="1" stop-color="#ff9e45"/>
+    </linearGradient>
+    <!-- same gradient as .primary-button in styles.css -->
+    <linearGradient id="earth" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#153b92"/>
+      <stop offset="1" stop-color="#1f7bc3"/>
+    </linearGradient>
+  </defs>
+
+  <g clip-path="url(#frame)">
+    <!-- dusk sky -->
+    <rect width="256" height="256" fill="url(#sky)"/>
+
+    <!-- the sun is the sad face, sinking into the sea -->
+    <circle cx="128" cy="148" r="68" fill="#ffd24f"/>
+
+    <!-- sad closed eyes -->
+    <path d="M92 130 q14 -13 28 0" fill="none" stroke="#2b1430" stroke-width="8" stroke-linecap="round"/>
+    <path d="M136 130 q14 -13 28 0" fill="none" stroke="#2b1430" stroke-width="8" stroke-linecap="round"/>
+
+    <!-- sea: its edge arcs up across the sun, forming the frown -->
+    <path d="M0 208 Q48 194 86 194 Q128 148 170 194 Q208 194 256 208 V256 H0 Z" fill="url(#earth)"/>
+  </g>
+</svg>

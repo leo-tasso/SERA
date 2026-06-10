@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="ui/assets/icon.svg" width="128" alt="SERA icon — a sad sun setting behind a frowning horizon" />
+</p>
+
 # SERA — Italy Digital Twin
 
 SERA is a digital twin of the Italian provinces. It has three parts:
@@ -64,10 +68,28 @@ How a simulated year works (`sera.twin.simulator`):
 3. Inter-indicator effects propagate (e.g. income → poverty), bounds are enforced, and a
    realism speed limit caps year-over-year change of any indicator at ±6%.
 
-`sera.twin.policy` defines the pluggable policy models used by the UI's optimizer:
-`baseline` (historical levers), `neural` (a small NumPy MLP trained with evolution
-strategies, emitting per-province levers), and `uniform_cem` (one shared national lever
-vector found with the cross-entropy method). All run subject to the national budget
+`sera.twin.policy` defines the pluggable policy models used by the UI's optimizer,
+spanning a deliberate **explainability spectrum** (each model carries a badge and an
+`explain()` artifact the UI renders next to its candidates):
+
+- `baseline` — historical levers (white box, trivially)
+- `neural` — a small NumPy MLP trained with evolution strategies, emitting per-province
+  levers (black box; audited post hoc via `sera.twin.explain`: permutation importance +
+  a distilled surrogate tree with an honest fidelity score)
+- `linear` — the same per-province setup with no hidden layer, same ES training; the
+  signed weight matrix is the explanation, so the score gap vs. `neural` is a measured
+  price of transparency (white box)
+- `rules` — one IF/THEN threshold rule per lever, found with CEM; the whole policy
+  prints as sentences (white box)
+- `cluster_cem` — provinces k-means-clustered on their indicators, one lever vector per
+  cluster: regional policy packages (white box)
+- `uniform_cem` — one shared national lever vector found with the cross-entropy method
+  (white box)
+- `uniform_bayes` — the same shared vector found with Gaussian-process Bayesian
+  optimization: far fewer twin rollouts, plus per-lever partial-dependence curves with
+  the GP's own uncertainty (gray box)
+
+All run subject to the national budget
 constraint: spending levers consume the pool, **tax levers fund it** (cutting taxes
 below baseline shrinks the budget available for programs), and unspent budget carries
 over as a reserve. Effect sizes (`CAUSAL_RULE_STRENGTH`, `POLICY_SIGNAL_CAP`) are
@@ -85,7 +107,7 @@ trainable model can be paired with any objective:
 - `wellbeing` — multi-indicator composite (GDP, life expectancy, unemployment, poverty)
   measured as percent change from the starting year
 
-The UI exposes both choices (model and objective) in the AI policy studio and plots the
+The UI exposes both choices (model and objective) in the header control panel and plots the
 objective's welfare trajectory against the baseline scenario, so the distributional
 consequences of each ethical framework are directly comparable.
 
@@ -95,6 +117,13 @@ state (a read-only what-if — the twin is never advanced) and the UI compares t
 outcomes side by side: total GDP (efficiency), inter-provincial Gini (inequality), the
 worst-off province's GDP (the floor), and per-objective "who gains, who loses" maps of
 final-year provincial GDP versus the baseline scenario.
+
+The **efficiency–equity frontier** (`sera.twin.pareto`, `pareto-front` bridge command)
+drops the framework dropdown entirely: an NSGA-II search evolves uniform national lever
+vectors against total GDP, inter-provincial Gini, and the worst-off province
+*simultaneously* and the UI plots the resulting Pareto frontier — every point a
+non-dominated policy whose levers can be inspected, with the utilitarian, egalitarian,
+and Rawlsian optima tagged as corners of the same curve. Read-only, like the dashboard.
 
 **Human oversight & uncertainty.** The optimizer never applies anything automatically:
 each run returns three graded candidates — full intervention, moderate (levers halfway
@@ -130,8 +159,8 @@ and `ui/province_provinces.geojson` (committed). All JS libraries (React, Chart.
 are vendored in `ui/vendor/` — the app makes **no network requests at runtime**.
 
 The Electron main process talks to Python through `ui/backend_bridge.py` (one process per
-command: `bootstrap`, `province-trends`, `simulate-next-year`, `optimize-policy`), streaming
-progress over stderr.
+command: `bootstrap`, `province-trends`, `simulate-next-year`, `optimize-policy`,
+`compare-objectives`, `pareto-front`), streaming progress over stderr.
 
 ## Tests
 
@@ -144,7 +173,7 @@ python -m pytest tests -q
 - `src/sera/config.py` — paths, ISTAT constants, indicator→category map
 - `src/sera/istat_client.py` — rate-limited, cached SDMX client
 - `src/sera/downloader.py` + `src/sera/downloaders/<category>/<indicator>.py` — CLI + one module per indicator
-- `src/sera/twin/` — data loading, model training, causal graph, simulator, policy models, ethical objectives, CLI
+- `src/sera/twin/` — data loading, model training, causal graph, simulator, policy models, ethical objectives, post-hoc explanations (`explain.py`), Pareto frontier search (`pareto.py`), CLI
 - `ui/` — Electron app (main.js, preload.js, renderer.js, backend_bridge.py)
 - `data/` — downloaded indicator CSVs (110 provinces, 2-letter sigle)
 - `tools/ad_hoc/` — one-off validation and demo scripts
