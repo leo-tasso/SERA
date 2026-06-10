@@ -230,6 +230,29 @@ class TestSimulator:
         # Higher income tax should decrease income
         assert result["income"].iloc[0] < predictions["income"].iloc[0]
 
+    def test_causal_rule_strength_is_configurable(self):
+        """The rule strength scales the adjustment (used for sensitivity analysis)."""
+        trainer = ModelTrainer()
+
+        def rule_effect(strength):
+            simulator = DigitalTwinSimulator(
+                trainer,
+                indicators=["income"],
+                parameters=["income_tax_rate"],
+                causal_rule_strength=strength,
+            )
+            predictions = pd.DataFrame({"area_code": ["IT001"], "income": [50000.0]})
+            baseline, scale = get_parameter_reference("income_tax_rate")
+            parameters = pd.DataFrame(
+                {"area_code": ["IT001"], "income_tax_rate": [baseline + 2 * scale]}
+            )
+            lagged = pd.DataFrame({"income_lag1": [50000.0]})
+            result = simulator._apply_causal_rules(predictions, parameters, lagged)
+            return abs(result["income"].iloc[0] - 50000.0)
+
+        assert rule_effect(0.0) == 0.0
+        assert rule_effect(0.08) > rule_effect(0.04) > 0.0
+
     def test_post_propagation_bounds_are_reapplied(self):
         """Test that propagated values are clipped back into valid bounds."""
 

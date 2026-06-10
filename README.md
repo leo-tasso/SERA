@@ -4,7 +4,7 @@ SERA is a digital twin of the Italian provinces. It has three parts:
 
 1. **Data downloader** — fetches ~88 historical socioeconomic indicators (2001-2025) for the 110 Italian provinces from the ISTAT SDMX API into `data/`.
 2. **Twin engine** (`sera.twin`) — trains one ML model per indicator and simulates provincial indicators forward year by year under user-chosen policy levers, combining the trained models with a hand-written causal graph.
-3. **Control-room UI** (`ui/`) — an Electron + React dashboard with a clickable province map, per-province policy allocators, a national budget meter, and an AI policy optimizer that picks levers to maximize national GDP over a multi-year horizon.
+3. **Control-room UI** (`ui/`) — an Electron + React dashboard with a clickable province map, per-province policy allocators, a national budget meter, and an AI policy optimizer that picks levers over a multi-year horizon to maximize a user-selected **ethical objective** (utilitarian GDP, Rawlsian maximin, egalitarian Sen welfare, or multi-indicator wellbeing).
 
 ## Setup
 
@@ -65,9 +65,57 @@ How a simulated year works (`sera.twin.simulator`):
    realism speed limit caps year-over-year change of any indicator at ±6%.
 
 `sera.twin.policy` defines the pluggable policy models used by the UI's optimizer:
-`baseline` (historical levers) and `gdp_nn`, a small NumPy MLP trained with evolution
-strategies to maximize cumulative national GDP, subject to the national budget constraint
-(unspent budget carries over as a reserve).
+`baseline` (historical levers), `neural` (a small NumPy MLP trained with evolution
+strategies, emitting per-province levers), and `uniform_cem` (one shared national lever
+vector found with the cross-entropy method). All run subject to the national budget
+constraint: spending levers consume the pool, **tax levers fund it** (cutting taxes
+below baseline shrinks the budget available for programs), and unspent budget carries
+over as a reserve. Effect sizes (`CAUSAL_RULE_STRENGTH`, `POLICY_SIGNAL_CAP`) are
+calibrated so no single lever family can push a province to the growth cap on its own —
+policies face real fiscal trade-offs, which is what lets different ethical objectives
+reach genuinely different optima.
+
+What the optimizer maximizes is a separate, explicit choice: `sera.twin.objectives`
+defines pluggable **ethical objectives** that score each simulated year, and any
+trainable model can be paired with any objective:
+
+- `utilitarian` — total national GDP (sum across provinces; the classic default)
+- `rawlsian` — maximin: only the worst-off province counts (Rawls' difference principle)
+- `egalitarian` — Sen welfare: total GDP × (1 − Gini across provinces)
+- `wellbeing` — multi-indicator composite (GDP, life expectancy, unemployment, poverty)
+  measured as percent change from the starting year
+
+The UI exposes both choices (model and objective) in the AI policy studio and plots the
+objective's welfare trajectory against the baseline scenario, so the distributional
+consequences of each ethical framework are directly comparable.
+
+The **ethics equity dashboard** goes one step further: the `compare-objectives` bridge
+command trains the selected model once per ethical framework from the same starting
+state (a read-only what-if — the twin is never advanced) and the UI compares the
+outcomes side by side: total GDP (efficiency), inter-provincial Gini (inequality), the
+worst-off province's GDP (the floor), and per-objective "who gains, who loses" maps of
+final-year provincial GDP versus the baseline scenario.
+
+**Human oversight & uncertainty.** The optimizer never applies anything automatically:
+each run returns three graded candidates — full intervention, moderate (levers halfway
+back toward baseline, via `BlendedPolicy`), and the historical baseline — with their
+efficiency/equity trade-offs, and the user explicitly adopts one (or none). Trained
+candidates also carry a **sensitivity band**: the same policy re-simulated with the
+hand-written causal rules at 0.5× and 1.5× strength (`causal_rule_strength` on
+`DigitalTwinSimulator`), so the UI shows how much of the projection rests on hand-tuned
+assumptions.
+
+## Ethics & documentation
+
+SERA is decision *support*, not decision *making*, and ships the documentation a
+responsible AI system needs:
+
+- [ETHICS.md](ETHICS.md) — intended use, embedded value judgments, affected groups,
+  EU AI Act positioning
+- [docs/MODEL_CARD.md](docs/MODEL_CARD.md) — model card for the twin and policy models,
+  including honest validation status
+- [docs/DATASHEET.md](docs/DATASHEET.md) — datasheet for the ISTAT dataset, including
+  who is missing from the data
 
 ## UI
 
@@ -96,7 +144,7 @@ python -m pytest tests -q
 - `src/sera/config.py` — paths, ISTAT constants, indicator→category map
 - `src/sera/istat_client.py` — rate-limited, cached SDMX client
 - `src/sera/downloader.py` + `src/sera/downloaders/<category>/<indicator>.py` — CLI + one module per indicator
-- `src/sera/twin/` — data loading, model training, causal graph, simulator, policy models, CLI
+- `src/sera/twin/` — data loading, model training, causal graph, simulator, policy models, ethical objectives, CLI
 - `ui/` — Electron app (main.js, preload.js, renderer.js, backend_bridge.py)
 - `data/` — downloaded indicator CSVs (110 provinces, 2-letter sigle)
 - `tools/ad_hoc/` — one-off validation and demo scripts

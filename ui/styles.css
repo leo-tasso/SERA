@@ -617,3 +617,142 @@ button:disabled {
     flex-direction: column;
   }
 }
+/* Ethics equity dashboard */
+.ethics-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.ethics-table th,
+.ethics-table td {
+  padding: 8px 10px;
+  text-align: right;
+  border-bottom: 1px solid rgba(17, 42, 72, 0.08);
+  white-space: nowrap;
+}
+
+.ethics-table th:first-child,
+.ethics-table td:first-child {
+  text-align: left;
+}
+
+.ethics-table thead th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.ethics-table-baseline td {
+  color: var(--muted);
+}
+
+.delta-positive {
+  color: #0f766e;
+  font-weight: 600;
+}
+
+.delta-negative {
+  color: #b61c3e;
+  font-weight: 600;
+}
+
+.objective-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  margin-right: 7px;
+  vertical-align: baseline;
+}
+
+.ethics-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.ethics-maps-title {
+  margin: 0 0 12px;
+  font-size: 15px;
+  color: #102038;
+}
+
+.ethics-maps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 18px;
+}
+
+.ethics-map-card h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #102038;
+}
+
+.legend-bar--diverging {
+  background: linear-gradient(90deg, #b61c3e 0%, #f1f5f9 50%, #0f766e 100%);
+}
+
+/* Human-oversight candidate cards */
+.uncertainty-note {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(217, 119, 6, 0.08);
+  border: 1px solid rgba(217, 119, 6, 0.22);
+  color: #7c4a03;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.candidate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 18px;
+}
+
+.candidate-card {
+  border: 1px solid rgba(17, 42, 72, 0.1);
+  border-radius: 16px;
+  padding: 16px;
+  background: linear-gradient(180deg, #fbfdff 0%, #f3f7fc 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.candidate-card.adopted {
+  border-color: #0f766e;
+  box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.18);
+}
+
+.candidate-card h4 {
+  margin: 0;
+  font-size: 14px;
+  color: #102038;
+}
+
+.candidate-card .primary-button {
+  margin-top: auto;
+}
+
+.candidate-metrics {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+}
+
+.candidate-metrics li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(17, 42, 72, 0.07);
+}
+
+.candidate-metrics li span:first-child {
+  color: var(--muted);
+}

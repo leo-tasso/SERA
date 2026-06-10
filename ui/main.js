@@ -176,6 +176,20 @@ ipcMain.handle('ui:simulate-next-year', async (event, payload) => {
   return response
 })
 
+ipcMain.handle('ui:compare-objectives', async (event, payload) => {
+  event.sender.send('ui:simulation-log', 'Training the policy model once per ethical objective...\n')
+  const response = await runBridgeAsync(
+    'compare-objectives',
+    {
+      ...payload,
+      modelPath: path.join(REPO_ROOT, 'twin_models.joblib'),
+    },
+    event.sender,
+  )
+  event.sender.send('ui:simulation-log', `Ethics comparison completed through ${response.finalYear}.\n`)
+  return response
+})
+
 ipcMain.handle('ui:optimize-policy', async (event, payload) => {
   event.sender.send('ui:simulation-log', 'Running policy model over the horizon...\n')
   const response = await runBridgeAsync(

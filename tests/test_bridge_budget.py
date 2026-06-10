@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ui"))
 import backend_bridge  # noqa: E402
 from backend_bridge import (  # noqa: E402
     SPENDING_PARAMS,
+    TAX_PARAMS,
     _apply_budget_constraint,
     _budget_usage,
     _make_constraint_fn,
@@ -41,6 +42,12 @@ def allocations_scaled(factor):
     return {"MI": dict(levers), "TO": dict(levers)}
 
 
+def tax_allocations_scaled(factor):
+    """Every tax lever at ``factor`` x its historical baseline."""
+    levers = {key: parameter_limits(key)[0] * factor for key in TAX_PARAMS}
+    return {"MI": dict(levers), "TO": dict(levers)}
+
+
 class TestBudgetUsage:
     def test_baseline_allocations_use_exactly_the_pool(self):
         used, pool = _budget_usage({}, make_state(), INTENSITY)
@@ -56,6 +63,29 @@ class TestBudgetUsage:
         state.loc[1, "gdp_per_capita"] = 0.0
         used, pool = _budget_usage({}, state, INTENSITY)
         assert pool == pytest.approx(300 * INTENSITY / 100)
+        assert used == pytest.approx(pool)
+
+    def test_tax_cuts_shrink_the_pool(self):
+        _used, baseline_pool = _budget_usage({}, make_state(), INTENSITY)
+        _used, pool = _budget_usage(tax_allocations_scaled(0.5), make_state(), INTENSITY)
+        assert pool == pytest.approx(baseline_pool * 0.5)
+
+    def test_tax_raises_grow_the_pool(self):
+        _used, baseline_pool = _budget_usage({}, make_state(), INTENSITY)
+        _used, pool = _budget_usage(tax_allocations_scaled(1.5), make_state(), INTENSITY)
+        assert pool == pytest.approx(baseline_pool * 1.5)
+
+    def test_tax_cuts_force_spending_to_scale_down(self):
+        # Baseline spending + halved taxes: revenue covers only half the cost,
+        # so every spending lever must be scaled to ~50%.
+        allocations = tax_allocations_scaled(0.5)
+        for code in allocations:
+            for key in SPENDING_PARAMS:
+                allocations[code][key] = parameter_limits(key)[0]
+        scaled = _apply_budget_constraint(allocations, make_state(), INTENSITY)
+        key = next(iter(SPENDING_PARAMS))
+        assert scaled["MI"][key] == pytest.approx(parameter_limits(key)[0] * 0.5)
+        used, pool = _budget_usage(scaled, make_state(), INTENSITY)
         assert used == pytest.approx(pool)
 
 

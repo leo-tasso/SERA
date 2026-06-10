@@ -27,21 +27,25 @@ logger = logging.getLogger(__name__)
 # so it only constrains aggressively-pushed scenarios.
 DEFAULT_MAX_ANNUAL_GROWTH = 0.06
 
-# The trained indicator models are well-calibrated for *policy sensitivity* but
-# not for absolute level (the bootstrap initial state can sit on a different
-# scale than the training data, which would make the first prediction leap).
-# So we anchor each indicator to its previous-year value and use the model only
-# for the relative effect of policy vs. baseline policy, capped to this band.
-POLICY_SIGNAL_CAP = 0.5
+# The trained indicator models are anchored to the previous-year value and used
+# only for the *relative* effect of policy vs. baseline policy (their absolute
+# level is not trusted), capped to this band. Empirically the models' relative
+# response saturates the cap for almost any lever deviation, so this cap is the
+# de-facto size of the ML layer's contribution and must stay small: at large
+# values (e.g. 0.5) every intervention — regardless of which levers move — hits
+# the realism growth limit, erasing all trade-offs between policies.
+POLICY_SIGNAL_CAP = 0.03
 
-# Strength of the hand-written causal rules (max ±4% per lever per year, before
+# Strength of the hand-written causal rules (max ±2% per lever per year, before
 # dampening). NOTE: policy levers deliberately act on indicators through TWO
 # layers that compound — the trained models' policy signal above AND these
 # explicit causal rules. The models capture the (often weak) statistical
 # sensitivity present in the historical data; the rules add a guaranteed
 # domain-knowledge elasticity so every documented lever→indicator link responds
-# even where the data is too noisy for the models to learn it.
-CAUSAL_RULE_STRENGTH = 0.04
+# even where the data is too noisy for the models to learn it. Together with
+# POLICY_SIGNAL_CAP this is calibrated so that no single lever family can push
+# a province to the growth cap on its own — policies must make real choices.
+CAUSAL_RULE_STRENGTH = 0.02
 
 
 class DigitalTwinSimulator:
@@ -52,17 +56,28 @@ class DigitalTwinSimulator:
         trainer: ModelTrainer,
         indicators: List[str],
         parameters: List[str],
+        causal_rule_strength: float = CAUSAL_RULE_STRENGTH,
+        policy_signal_cap: float = POLICY_SIGNAL_CAP,
     ):
         """Initialize simulator.
-        
+
         Args:
             trainer: Trained ModelTrainer instance
             indicators: List of indicator names in the system
             parameters: List of parameter names in the system
+            causal_rule_strength: Strength of the hand-written causal rules.
+                Exposed so sensitivity analysis can re-run a scenario under
+                weaker/stronger assumptions and report how much the results
+                depend on this hand-tuned constant.
+            policy_signal_cap: Cap on the trained models' relative policy
+                response per year (prediction under chosen levers vs. baseline
+                levers). Exposed for the same calibration/sensitivity reasons.
         """
         self.trainer = trainer
         self.indicators = indicators
         self.parameters = parameters
+        self.causal_rule_strength = float(causal_rule_strength)
+        self.policy_signal_cap = float(policy_signal_cap)
         self.simulation_history: List[Dict] = []
 
     def simulate_year(
@@ -177,7 +192,9 @@ class DigitalTwinSimulator:
             pred_baseline = model.predict(features_baseline[model_features].values)
             denom = np.abs(pred_baseline) + 1e-6
             policy_signal = np.clip(
-                (pred - pred_baseline) / denom, -POLICY_SIGNAL_CAP, POLICY_SIGNAL_CAP
+                (pred - pred_baseline) / denom,
+                -self.policy_signal_cap,
+                self.policy_signal_cap,
             )
             predictions[indicator] = lag_values * (1.0 + policy_signal)
 
@@ -331,7 +348,7 @@ class DigitalTwinSimulator:
                 # Get non-linear dampening based on current value
                 # As indicator approaches upper bound, effect weakens
                 current_values = result[indicator].values
-                base_adjustment = effect_sign * param_signal * CAUSAL_RULE_STRENGTH
+                base_adjustment = effect_sign * param_signal * self.causal_rule_strength
                 
                 # Apply non-linear dampening
                 dampening = self._get_nonlinear_dampening(

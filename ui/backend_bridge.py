@@ -15,14 +15,21 @@ from sera.twin.causal_graph import ANNUAL_PARAMETERS, INDICATOR_BOUNDS, get_para
 from sera.twin.cli import load_initial_state
 from sera.twin.data_loader import DataLoader
 from sera.twin.model_trainer import ModelTrainer
+from sera.twin.objectives import (
+    DEFAULT_OBJECTIVE_ID,
+    available_objectives,
+    build_objective,
+    gini,
+)
 from sera.twin.policy import (
+    BlendedPolicy,
     ParamSpec,
     RolloutEnv,
     available_models,
     build_policy,
 )
 from sera.twin.province_mapping import PROVINCE_SIGLAS_110
-from sera.twin.simulator import DigitalTwinSimulator
+from sera.twin.simulator import CAUSAL_RULE_STRENGTH, DigitalTwinSimulator
 
 SPENDING_PARAMS = {
     'healthcare_spending_allocation',
@@ -38,6 +45,16 @@ SPENDING_PARAMS = {
     'small_business_support',
     'public_sector_wage_levels',
     'housing_urban_development_support',
+}
+
+# Revenue levers: these fund the national spending pool. Cutting them below
+# baseline shrinks the budget available for the spending levers above; raising
+# them grows it (at the cost of their own causal drag on the economy).
+TAX_PARAMS = {
+    'income_tax_rate',
+    'corporate_tax_rate',
+    'property_wealth_tax_rate',
+    'vat_consumption_tax_rate',
 }
 
 INDICATORS = {
@@ -164,6 +181,7 @@ def build_bootstrap(payload: dict) -> dict:
         'provinces': PROVINCE_SIGLAS_110,
         'spendingIntensityPct': get_spending_intensity_pct(),
         'models': available_models(),
+        'objectives': available_objectives(),
     }
 
 
@@ -226,16 +244,22 @@ def _budget_usage(
 ) -> tuple[float, float]:
     """Return ``(total_used, base_pool)`` for the national spending budget.
 
-    Cost formula (mirrors frontend ResourceMeter):
-      province_cost = avg(val / baseline  for each spending param) * (intensity/100) * gdp
-      province_base_limit = (intensity/100) * gdp
-    At historical baseline values, cost == limit exactly (100% utilisation).
+    Formulas (mirrored by the frontend ResourceMeter):
+      province_cost    = avg(val / baseline  for each spending param) * (intensity/100) * gdp
+      province_revenue = avg(val / baseline  for each tax param)      * (intensity/100) * gdp
+      base_pool        = sum of province revenues
+    At historical baseline values, cost == pool exactly (100% utilisation).
+    Cutting taxes below baseline shrinks the pool — the fiscal trade-off that
+    keeps "stimulate with tax cuts AND max spending everywhere" infeasible.
     """
     spending_keys = list(SPENDING_PARAMS)
+    tax_keys = list(TAX_PARAMS)
     if not spending_keys:
         return 0.0, 0.0
 
-    param_baselines = {key: max(parameter_limits(key)[0], 1e-9) for key in spending_keys}
+    param_baselines = {
+        key: max(parameter_limits(key)[0], 1e-9) for key in spending_keys + tax_keys
+    }
 
     gdp_by_province: dict[str, float] = {}
     for _, row in current_state.iterrows():
@@ -244,17 +268,21 @@ def _budget_usage(
         if gdp > 0:
             gdp_by_province[code] = gdp
 
-    base_pool = sum(gdp_by_province.values()) * spending_intensity_pct / 100.0
-
+    base_pool = 0.0
     total_used = 0.0
     for code, gdp in gdp_by_province.items():
         prov = allocations.get(code, {})
-        ratio_sum = sum(
+        revenue_ratio = sum(
+            float(prov.get(key, param_baselines[key])) / param_baselines[key]
+            for key in tax_keys
+        ) / max(len(tax_keys), 1)
+        base_pool += revenue_ratio * gdp * spending_intensity_pct / 100.0
+
+        cost_ratio = sum(
             float(prov.get(key, param_baselines[key])) / param_baselines[key]
             for key in spending_keys
-        )
-        avg_ratio = ratio_sum / len(spending_keys)
-        total_used += avg_ratio * gdp * spending_intensity_pct / 100.0
+        ) / len(spending_keys)
+        total_used += cost_ratio * gdp * spending_intensity_pct / 100.0
 
     return total_used, base_pool
 
@@ -365,15 +393,29 @@ def simulate_next_year(payload: dict) -> dict:
     }
 
 
-def _gdp_series_payload(base_year: int, gdp_series: list[float]) -> list[dict]:
+def _series_payload(base_year: int, series: list[float]) -> list[dict]:
     return [
         {'year': base_year + index + 1, 'value': float(value)}
-        for index, value in enumerate(gdp_series)
+        for index, value in enumerate(series)
     ]
 
 
+# Causal-rule strength multipliers used for the sensitivity band: the same
+# policy re-simulated with the hand-written rules at half and 1.5x strength.
+SENSITIVITY_RULE_SCALES = [0.5, 1.5]
+
+
 def optimize_policy(payload: dict) -> dict:
-    """Run a selected policy model over a multi-year horizon to maximise national GDP."""
+    """Train a policy on the chosen ethical objective and return graded candidates.
+
+    Decision support, not decision making: nothing is applied automatically.
+    The response carries three intervention candidates — full, moderate (levers
+    halfway back toward baseline), and the historical baseline — each with its
+    trajectory and equity metrics, and for the trained candidates a sensitivity
+    band showing how the GDP path moves when the hand-written causal-rule
+    strength is halved or increased by half. The human adopts (or rejects) a
+    candidate in the UI.
+    """
     current_state = pd.DataFrame(payload.get('currentStateRows') or [])
     if current_state.empty:
         raise ValueError('currentStateRows is required to run the policy optimizer.')
@@ -389,89 +431,307 @@ def optimize_policy(payload: dict) -> dict:
     horizon = max(1, min(horizon, 50))
     iterations = int(payload.get('iterations') or 6)
     iterations = max(1, min(iterations, 40))
-    model_id = str(payload.get('modelId') or 'gdp_nn')
+    model_id = str(payload.get('modelId') or 'neural')
+    objective_id = str(payload.get('objectiveId') or DEFAULT_OBJECTIVE_ID)
+    objective = build_objective(objective_id)
     spending_intensity_pct = float(payload.get('spendingIntensityPct') or get_spending_intensity_pct())
     reserve_pool = float(payload.get('reservePool') or 0.0)
+    final_year = current_year + horizon
 
     emit_progress(2, 'Loading trained twin...')
     model_path = Path(payload.get('modelPath') or REPO_ROOT / 'twin_models.joblib')
     trainer = ModelTrainer.load(model_path)
 
     indicator_columns = [column for column in current_state.columns if column not in {'area_code', 'year'}]
-    simulator = DigitalTwinSimulator(trainer, indicator_columns, list(ANNUAL_PARAMETERS.keys()))
-
     param_specs = [
         ParamSpec(item['key'], item['baseline'], item['min'], item['max'])
         for item in parameter_metadata()
     ]
-    constraint_fn = _make_constraint_fn(spending_intensity_pct)
-    env = RolloutEnv(
-        simulator=simulator,
-        initial_state=current_state,
-        indicator_cols=indicator_columns,
-        param_specs=param_specs,
-        provinces=PROVINCE_SIGLAS_110,
-        horizon=horizon,
-        base_year=current_year,
-        constraint_fn=constraint_fn,
-        reserve_pool=reserve_pool,
+
+    def make_env(rule_scale: float = 1.0) -> RolloutEnv:
+        simulator = DigitalTwinSimulator(
+            trainer,
+            indicator_columns,
+            list(ANNUAL_PARAMETERS.keys()),
+            causal_rule_strength=CAUSAL_RULE_STRENGTH * rule_scale,
+        )
+        return RolloutEnv(
+            simulator=simulator,
+            initial_state=current_state,
+            indicator_cols=indicator_columns,
+            param_specs=param_specs,
+            provinces=PROVINCE_SIGLAS_110,
+            horizon=horizon,
+            base_year=current_year,
+            constraint_fn=_make_constraint_fn(spending_intensity_pct),
+            reserve_pool=reserve_pool,
+            objective=build_objective(objective_id),
+        )
+
+    env = make_env()
+
+    def candidate_payload(policy, candidate_id: str, label: str, description: str,
+                          with_band: bool) -> dict:
+        trajectory, gdp_series, welfare_series, allocations_by_year, reserve = env.rollout(policy)
+        report = _trajectory_report(trajectory, gdp_series, current_year, final_year)
+        report.pop('finalGdpByProvince', None)
+
+        band = None
+        if with_band and gdp_series:
+            lows = list(gdp_series)
+            highs = list(gdp_series)
+            for scale in SENSITIVITY_RULE_SCALES:
+                _t, scaled_gdp, _w, _a, _r = make_env(scale).rollout(policy)
+                lows = [min(low, value) for low, value in zip(lows, scaled_gdp)]
+                highs = [max(high, value) for high, value in zip(highs, scaled_gdp)]
+            band = [
+                {'year': current_year + index + 1, 'low': float(low), 'high': float(high)}
+                for index, (low, high) in enumerate(zip(lows, highs))
+            ]
+
+        summary = {}
+        if not trajectory.empty:
+            final_state = trajectory[trajectory['year'] == final_year]
+            for key in ['gdp_per_capita', 'income', 'unemployment_rate', 'life_expectancy']:
+                if key in final_state.columns:
+                    summary[key] = float(final_state[key].mean())
+
+        report.update(
+            {
+                'id': candidate_id,
+                'label': label,
+                'description': description,
+                'welfareByYear': _series_payload(current_year, welfare_series),
+                'gdpBandByYear': band,
+                'trajectoryRows': dataframe_records(trajectory),
+                'finalAllocations': allocations_by_year.get(final_year, {}),
+                'reservePool': float(reserve),
+                'summary': summary,
+            }
+        )
+        return report
+
+    baseline_policy = build_policy('baseline', param_specs)
+    baseline_description = (
+        'Every lever stays at its historical value. The do-nothing reference: '
+        'choosing it is also a policy decision.'
     )
 
-    # Baseline (historical levers) reference trajectory for comparison.
-    emit_progress(5, 'Computing baseline trajectory...')
-    baseline_policy = build_policy('baseline', param_specs)
-    _baseline_traj, baseline_gdp, _baseline_allocs, _baseline_reserve = env.rollout(baseline_policy)
-
     train_info: dict = {}
+    candidates: list[dict] = []
     if model_id == 'baseline':
-        trajectory, gdp_series, allocations_by_year, final_reserve = (
-            _baseline_traj, baseline_gdp, _baseline_allocs, _baseline_reserve
+        emit_progress(50, 'Rolling out baseline trajectory...')
+        candidates.append(
+            candidate_payload(
+                baseline_policy, 'baseline', 'Baseline (historical levers)',
+                baseline_description, False,
+            )
         )
-        emit_progress(95, 'Collecting results...')
     else:
         policy = build_policy(model_id, param_specs)
 
         def progress(step: int, total: int, score: float) -> None:
             print(
-                f'Training {model_id}: iteration {step}/{total} - best cumulative GDP {score:,.0f}',
+                f'Training {model_id} on {objective.label}: iteration {step}/{total} '
+                f'- best cumulative score {score:,.2f}',
                 file=sys.stderr,
                 flush=True,
             )
-            # Training spans the 12% -> 90% window of the overall run.
+            # Training spans the 10% -> 78% window of the overall run.
             emit_progress(
-                12 + 78 * step / max(total, 1),
-                f'Training {model_id}: iteration {step}/{total}',
+                10 + 68 * step / max(total, 1),
+                f'Training {model_id} ({objective.label}): iteration {step}/{total}',
             )
 
-        emit_progress(12, f'Training {model_id}: iteration 0/{iterations}')
+        emit_progress(10, f'Training {model_id} ({objective.label}): iteration 0/{iterations}')
         train_info = policy.fit(env, iterations=iterations, progress=progress)
-        emit_progress(92, 'Rolling out optimized policy...')
-        trajectory, gdp_series, allocations_by_year, final_reserve = env.rollout(policy)
-        emit_progress(97, 'Collecting results...')
 
+        emit_progress(80, 'Rolling out full intervention + sensitivity band...')
+        candidates.append(
+            candidate_payload(
+                policy, 'full', 'Full intervention',
+                'The levers exactly as the model optimized them. Largest projected '
+                'effect, largest dependence on the twin\'s assumptions.', True,
+            )
+        )
+        emit_progress(88, 'Rolling out moderate intervention + sensitivity band...')
+        candidates.append(
+            candidate_payload(
+                BlendedPolicy(policy, 0.5), 'moderate', 'Moderate intervention',
+                'Same policy direction with every lever moved only halfway from '
+                'baseline. Smaller projected effect, smaller bet on the model '
+                'being right.', True,
+            )
+        )
+        emit_progress(95, 'Rolling out baseline reference...')
+        candidates.append(
+            candidate_payload(
+                baseline_policy, 'baseline', 'Baseline (historical levers)',
+                baseline_description, False,
+            )
+        )
+
+    emit_progress(98, 'Collecting results...')
+    return {
+        'modelId': model_id,
+        'objectiveId': objective_id,
+        'objectiveLabel': objective.label,
+        'horizon': horizon,
+        'finalYear': final_year,
+        'trainInfo': train_info,
+        'candidates': candidates,
+        'sensitivityScales': SENSITIVITY_RULE_SCALES,
+    }
+
+
+def _equity_series(trajectory: pd.DataFrame) -> tuple[list[dict], list[dict]]:
+    """Per-year Gini and worst-off provincial GDP for a simulated trajectory."""
+    gini_series: list[dict] = []
+    worst_series: list[dict] = []
+    if trajectory.empty or 'gdp_per_capita' not in trajectory.columns:
+        return gini_series, worst_series
+    years = sorted(
+        pd.to_numeric(trajectory['year'], errors='coerce').dropna().astype(int).unique().tolist()
+    )
+    for year in years:
+        group = trajectory[trajectory['year'] == year]
+        values = pd.to_numeric(group['gdp_per_capita'], errors='coerce').dropna()
+        if values.empty:
+            continue
+        gini_series.append({'year': year, 'value': float(gini(values.to_numpy()))})
+        worst_series.append({'year': year, 'value': float(values.min())})
+    return gini_series, worst_series
+
+
+def _final_gdp_by_province(trajectory: pd.DataFrame, final_year: int) -> dict[str, float]:
+    if trajectory.empty or 'gdp_per_capita' not in trajectory.columns:
+        return {}
+    rows = trajectory[trajectory['year'] == final_year]
+    result: dict[str, float] = {}
+    for _, row in rows.iterrows():
+        value = pd.to_numeric(pd.Series([row['gdp_per_capita']]), errors='coerce').iloc[0]
+        if pd.notna(value):
+            result[str(row['area_code']).strip().upper()] = float(value)
+    return result
+
+
+def _trajectory_report(trajectory: pd.DataFrame, gdp_series: list[float],
+                       current_year: int, final_year: int) -> dict:
+    """Equity-focused summary of one rollout, shared by baseline and objectives."""
+    gini_series, worst_series = _equity_series(trajectory)
+    return {
+        'gdpByYear': _series_payload(current_year, gdp_series),
+        'giniByYear': gini_series,
+        'worstGdpByYear': worst_series,
+        'finalGdpByProvince': _final_gdp_by_province(trajectory, final_year),
+        'finalGdpTotal': float(gdp_series[-1]) if gdp_series else 0.0,
+        'finalGini': float(gini_series[-1]['value']) if gini_series else 0.0,
+        'worstProvinceGdp': float(worst_series[-1]['value']) if worst_series else 0.0,
+    }
+
+
+def compare_objectives(payload: dict) -> dict:
+    """Train the selected model once per ethical objective and report equity outcomes.
+
+    A read-only what-if analysis: the twin state is never advanced, the same
+    starting state feeds every framework, and the response carries the GDP,
+    Gini, and worst-off-province trajectories needed to compare them.
+    """
+    current_state = pd.DataFrame(payload.get('currentStateRows') or [])
+    if current_state.empty:
+        raise ValueError('currentStateRows is required to compare objectives.')
+    if 'area_code' not in current_state.columns or 'year' not in current_state.columns:
+        raise ValueError('currentStateRows must contain area_code and year columns.')
+
+    current_state = current_state.copy()
+    current_state['year'] = current_state['year'].astype(int)
+    current_state = current_state.sort_values('area_code').reset_index(drop=True)
+    current_year = int(payload.get('currentYear') or current_state['year'].max())
+
+    horizon = max(1, min(int(payload.get('horizon') or 20), 50))
+    iterations = max(1, min(int(payload.get('iterations') or 6), 40))
+    model_id = str(payload.get('modelId') or 'neural')
+    spending_intensity_pct = float(payload.get('spendingIntensityPct') or get_spending_intensity_pct())
+    reserve_pool = float(payload.get('reservePool') or 0.0)
     final_year = current_year + horizon
-    summary_keys = ['gdp_per_capita', 'income', 'unemployment_rate', 'life_expectancy']
-    summary = {}
-    if not trajectory.empty:
-        final_state = trajectory[trajectory['year'] == final_year]
-        for key in summary_keys:
-            if key in final_state.columns:
-                summary[key] = float(final_state[key].mean())
 
-    # Per-province levers the model chose for the final year (loaded into the UI).
-    final_allocations = allocations_by_year.get(final_year, {})
+    emit_progress(2, 'Loading trained twin...')
+    model_path = Path(payload.get('modelPath') or REPO_ROOT / 'twin_models.joblib')
+    trainer = ModelTrainer.load(model_path)
+    indicator_columns = [column for column in current_state.columns if column not in {'area_code', 'year'}]
+    simulator = DigitalTwinSimulator(trainer, indicator_columns, list(ANNUAL_PARAMETERS.keys()))
+    param_specs = [
+        ParamSpec(item['key'], item['baseline'], item['min'], item['max'])
+        for item in parameter_metadata()
+    ]
 
+    def make_env(objective):
+        return RolloutEnv(
+            simulator=simulator,
+            initial_state=current_state,
+            indicator_cols=indicator_columns,
+            param_specs=param_specs,
+            provinces=PROVINCE_SIGLAS_110,
+            horizon=horizon,
+            base_year=current_year,
+            constraint_fn=_make_constraint_fn(spending_intensity_pct),
+            reserve_pool=reserve_pool,
+            objective=objective,
+        )
+
+    emit_progress(4, 'Computing baseline trajectory...')
+    baseline_env = make_env(None)
+    baseline_policy = build_policy('baseline', param_specs)
+    baseline_traj, baseline_gdp, _w, _a, _r = baseline_env.rollout(baseline_policy)
+    baseline_report = _trajectory_report(baseline_traj, baseline_gdp, current_year, final_year)
+
+    objectives_meta = available_objectives()
+    span = 88.0 / max(len(objectives_meta), 1)  # training spans the 8% -> 96% window
+    results = []
+    for index, meta in enumerate(objectives_meta):
+        objective = build_objective(meta['id'])
+        window_start = 8.0 + span * index
+        env = make_env(objective)
+        policy = build_policy(model_id, param_specs)
+
+        train_info: dict = {}
+        if policy.trainable:
+            def progress(step: int, total: int, score: float,
+                         _start=window_start, _label=meta['label']) -> None:
+                print(
+                    f'[{index + 1}/{len(objectives_meta)}] Training {model_id} on {_label}: '
+                    f'iteration {step}/{total} - best cumulative score {score:,.2f}',
+                    file=sys.stderr,
+                    flush=True,
+                )
+                emit_progress(
+                    _start + (span - 4.0) * step / max(total, 1),
+                    f'[{index + 1}/{len(objectives_meta)}] Training {model_id} on {_label}: '
+                    f'iteration {step}/{total}',
+                )
+
+            train_info = policy.fit(env, iterations=iterations, progress=progress)
+        emit_progress(window_start + span - 3.0, f'Rolling out {meta["label"]}...')
+        trajectory, gdp_series, welfare_series, _allocations, _reserve = env.rollout(policy)
+
+        report = _trajectory_report(trajectory, gdp_series, current_year, final_year)
+        report.update(
+            {
+                'objectiveId': meta['id'],
+                'objectiveLabel': meta['label'],
+                'welfareByYear': _series_payload(current_year, welfare_series),
+                'trainInfo': train_info,
+            }
+        )
+        results.append(report)
+
+    emit_progress(98, 'Collecting comparison results...')
     return {
         'modelId': model_id,
         'horizon': horizon,
         'finalYear': final_year,
-        'trajectoryRows': dataframe_records(trajectory),
-        'baselineGdpByYear': _gdp_series_payload(current_year, baseline_gdp),
-        'optimizedGdpByYear': _gdp_series_payload(current_year, gdp_series),
-        'finalAllocations': final_allocations,
-        'summary': summary,
-        'trainInfo': train_info,
-        'reservePool': float(final_reserve),
+        'baseline': baseline_report,
+        'results': results,
     }
 
 
@@ -492,6 +752,9 @@ def main() -> None:
     elif command == 'optimize-policy':
         print('Loading trained twin and running policy model over the horizon...', file=sys.stderr)
         result = optimize_policy(payload)
+    elif command == 'compare-objectives':
+        print('Training the policy model once per ethical objective...', file=sys.stderr)
+        result = compare_objectives(payload)
     else:
         raise ValueError(f'Unknown bridge command: {command}')
 

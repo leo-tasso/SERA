@@ -7,10 +7,20 @@ only has to implement :meth:`PolicyModel.decide`. A :class:`RolloutEnv` wraps
 the :class:`DigitalTwinSimulator` and rolls a policy forward over a multi-year
 horizon, applying the national budget constraint each year.
 
-It also ships a small neural-network policy (:class:`GdpMaximizerPolicy`) that is
-trained with an evolution strategy to maximise the nation's cumulative GDP over
-the chosen horizon. The network is a tiny pure-NumPy MLP so no extra heavy
-dependency (PyTorch/TensorFlow) is required.
+What the optimizer maximises is *not* hard-wired: the env scores rollouts with
+a pluggable ethical :class:`~sera.twin.objectives.Objective` (utilitarian GDP,
+Rawlsian maximin, egalitarian Sen welfare, multi-indicator wellbeing), so the
+ethical framework and the search model are independent choices.
+
+Two trainable models ship with the twin, both objective-agnostic and
+gradient-free (the twin is a non-differentiable black box of sklearn models
+plus rules):
+
+- :class:`NeuralPolicy` — a tiny pure-NumPy MLP applied per province (each
+  province gets levers tailored to its own state), trained with
+  mirrored-sampling Evolution Strategies.
+- :class:`UniformLeverPolicy` — one shared national lever vector applied to
+  every province, found with the Cross-Entropy Method.
 """
 
 from __future__ import annotations
@@ -24,6 +34,7 @@ from typing import Callable, Dict, List, Optional
 import numpy as np
 import pandas as pd
 
+from sera.twin.objectives import Objective, UtilitarianGdpObjective
 from sera.twin.simulator import DigitalTwinSimulator
 
 logger = logging.getLogger(__name__)
@@ -74,10 +85,14 @@ class RolloutEnv:
     base_year: int
     constraint_fn: Optional[ConstraintFn] = None
     reserve_pool: float = 0.0
+    objective: Optional[Objective] = None
 
     def __post_init__(self) -> None:
         self.param_keys = [spec.key for spec in self.param_specs]
         self._spec_by_key = {spec.key: spec for spec in self.param_specs}
+        if self.objective is None:
+            self.objective = UtilitarianGdpObjective()
+        self.objective.prepare(self.initial_state, self.indicator_cols)
 
     def _build_params_frame(
         self, year: int, allocations: Dict[str, Dict[str, float]]
@@ -106,14 +121,17 @@ class RolloutEnv:
     def rollout(self, policy: "PolicyModel"):
         """Simulate the full horizon under ``policy``.
 
-        Returns ``(trajectory_df, gdp_series, allocations_by_year, final_reserve)``
-        where ``gdp_series`` is the national GDP for each simulated year and
-        ``final_reserve`` is the unspent budget left after the last year.
+        Returns ``(trajectory_df, gdp_series, welfare_series, allocations_by_year,
+        final_reserve)`` where ``gdp_series`` is the national GDP for each
+        simulated year, ``welfare_series`` is the ethical objective's score for
+        each year, and ``final_reserve`` is the unspent budget left after the
+        last year.
         """
         state = self.initial_state.copy()
         reserve = float(self.reserve_pool)
         frames: List[pd.DataFrame] = []
         gdp_series: List[float] = []
+        welfare_series: List[float] = []
         allocations_by_year: Dict[int, Dict[str, Dict[str, float]]] = {}
 
         for step in range(self.horizon):
@@ -128,15 +146,16 @@ class RolloutEnv:
             state = state.sort_values("area_code").reset_index(drop=True)
             frames.append(state.copy())
             gdp_series.append(self.national_gdp(state))
+            welfare_series.append(float(self.objective.score_year(state)))
             allocations_by_year[year] = allocations
 
         trajectory = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
-        return trajectory, gdp_series, allocations_by_year, reserve
+        return trajectory, gdp_series, welfare_series, allocations_by_year, reserve
 
     def score(self, policy: "PolicyModel") -> float:
-        """Cumulative national GDP over the horizon (the optimisation target)."""
-        _trajectory, gdp_series, _allocations, _reserve = self.rollout(policy)
-        return float(np.sum(gdp_series))
+        """Cumulative objective welfare over the horizon (the optimisation target)."""
+        _trajectory, _gdp, welfare_series, _allocations, _reserve = self.rollout(policy)
+        return float(np.sum(welfare_series))
 
 
 # --------------------------------------------------------------------------- #
@@ -177,8 +196,8 @@ class BaselinePolicy(PolicyModel):
         return {code: dict(base) for code in env.provinces}
 
 
-class GdpMaximizerPolicy(PolicyModel):
-    """A tiny NumPy MLP policy trained to maximise national GDP.
+class NeuralPolicy(PolicyModel):
+    """A tiny NumPy MLP policy trained to maximise the env's ethical objective.
 
     The same shared network is applied to *each province* using that province's
     own indicators (plus the year position), emitting a value in ``[0, 1]`` per
@@ -186,14 +205,16 @@ class GdpMaximizerPolicy(PolicyModel):
     state, each receives its own tailored lever vector while the weight count
     stays small. It is optimised with mirrored-sampling Evolution Strategies
     (gradient-free, since the twin is a non-differentiable black box of sklearn
-    models + rules), with the national cumulative GDP as the shared objective.
+    models + rules); the optimisation target is whatever ethical objective the
+    rollout environment is configured with.
     """
 
-    model_id = "gdp_nn"
-    label = "Neural GDP maximizer"
+    model_id = "neural"
+    label = "Neural network (per-province levers)"
     description = (
-        "A small neural network trained with evolution strategies to choose "
-        "policy levers that maximise the nation's cumulative GDP over the horizon."
+        "A small neural network trained with evolution strategies. Each "
+        "province gets levers tailored to its own indicators, chosen to "
+        "maximise the selected ethical objective over the horizon."
     )
     trainable = True
 
@@ -379,13 +400,158 @@ class GdpMaximizerPolicy(PolicyModel):
         return env.score(self)
 
 
+class UniformLeverPolicy(PolicyModel):
+    """One shared national lever vector, found with the Cross-Entropy Method.
+
+    The structural opposite of :class:`NeuralPolicy`: every province receives
+    the *same* lever values, so the search space is just one point in
+    ``[0, 1]^n_levers`` decoded into the lever bounds. CEM keeps a Gaussian
+    over that space, samples a population per iteration, and refits the
+    Gaussian to the elite candidates under the env's ethical objective. Like
+    the neural policy it is objective-agnostic — the framework being maximised
+    comes entirely from the rollout environment.
+    """
+
+    model_id = "uniform_cem"
+    label = "Uniform national policy (CEM)"
+    description = (
+        "Cross-entropy search for a single lever vector applied identically "
+        "to every province — no regional tailoring, optimised for the "
+        "selected ethical objective."
+    )
+    trainable = True
+
+    def __init__(self, param_specs: List[ParamSpec], seed: int = 0):
+        super().__init__(param_specs)
+        self.seed = int(seed)
+        self.x: Optional[np.ndarray] = None  # shared levers in [0, 1]^n
+        self._mins: Optional[np.ndarray] = None
+        self._spans: Optional[np.ndarray] = None
+
+    def prepare(self, env: "RolloutEnv") -> None:
+        self._mins = np.array([spec.min for spec in self.param_specs], dtype=float)
+        self._spans = np.array(
+            [max(spec.max - spec.min, 0.0) for spec in self.param_specs], dtype=float
+        )
+        if self.x is None:
+            self.x = np.full(len(self.param_specs), 0.5)
+
+    def decide(self, state, step, env):
+        if self.x is None:
+            self.prepare(env)
+        values = self._mins + np.clip(self.x, 0.0, 1.0) * self._spans
+        shared = {
+            spec.key: float(values[col]) for col, spec in enumerate(self.param_specs)
+        }
+        return {code: dict(shared) for code in env.provinces}
+
+    def fit(
+        self,
+        env: "RolloutEnv",
+        *,
+        iterations: int = 6,
+        popsize: int = 12,
+        elite_frac: float = 0.3,
+        smoothing: float = 0.5,
+        progress=None,
+    ) -> dict:
+        """Cross-Entropy Method over the shared lever vector."""
+        self.prepare(env)
+        rng = np.random.default_rng(self.seed)
+        dim = len(self.param_specs)
+        n_elite = max(1, int(round(popsize * elite_frac)))
+
+        mu = self.x.copy()
+        sigma = np.full(dim, 0.25)
+        best_x = self.x.copy()
+        best_score = self._evaluate(env, best_x)
+        start_score = best_score
+        if progress is not None:
+            progress(0, iterations, best_score)
+
+        for iteration in range(1, iterations + 1):
+            candidates = np.clip(
+                mu + sigma * rng.standard_normal((popsize, dim)), 0.0, 1.0
+            )
+            scores = np.array([self._evaluate(env, c) for c in candidates])
+
+            elite_idx = np.argsort(scores)[-n_elite:]
+            elites = candidates[elite_idx]
+            mu = smoothing * elites.mean(axis=0) + (1.0 - smoothing) * mu
+            sigma = smoothing * elites.std(axis=0) + (1.0 - smoothing) * sigma
+            sigma = np.maximum(sigma, 0.02)  # keep exploring
+
+            top = int(elite_idx[-1])
+            if scores[top] > best_score:
+                best_score = float(scores[top])
+                best_x = candidates[top].copy()
+
+            if progress is not None:
+                progress(iteration, iterations, best_score)
+
+        self.x = best_x
+        return {
+            "best_score": float(best_score),
+            "start_score": float(start_score),
+            "improvement_pct": float(
+                100.0 * (best_score - start_score) / abs(start_score)
+            )
+            if start_score
+            else 0.0,
+            "iterations": int(iterations),
+        }
+
+    def _evaluate(self, env: "RolloutEnv", x: np.ndarray) -> float:
+        self.x = np.asarray(x, dtype=float)
+        return env.score(self)
+
+
+class BlendedPolicy(PolicyModel):
+    """Scale another policy's intervention toward the historical baseline.
+
+    ``blend=1.0`` reproduces the inner policy exactly; ``blend=0.5`` moves every
+    lever halfway back toward its baseline value; ``blend=0.0`` is the baseline
+    itself. Used to present graded intervention candidates (full / moderate /
+    none) to a human decision-maker instead of a single "optimal" answer.
+    """
+
+    model_id = "blended"
+    label = "Blended intervention"
+    description = "An existing policy's levers, scaled toward the historical baseline."
+    trainable = False
+
+    def __init__(self, inner: PolicyModel, blend: float):
+        super().__init__(inner.param_specs)
+        self.inner = inner
+        self.blend = float(min(max(blend, 0.0), 1.0))
+
+    def decide(self, state, step, env):
+        inner_allocations = self.inner.decide(state, step, env)
+        baselines = {spec.key: spec.baseline for spec in self.param_specs}
+        blended: Dict[str, Dict[str, float]] = {}
+        for code, levers in inner_allocations.items():
+            blended[code] = {
+                key: baselines.get(key, value)
+                + self.blend * (value - baselines.get(key, value))
+                for key, value in levers.items()
+            }
+        return blended
+
+
 # --------------------------------------------------------------------------- #
 # Registry
 # --------------------------------------------------------------------------- #
 _POLICY_CLASSES = {
     BaselinePolicy.model_id: BaselinePolicy,
-    GdpMaximizerPolicy.model_id: GdpMaximizerPolicy,
+    NeuralPolicy.model_id: NeuralPolicy,
+    UniformLeverPolicy.model_id: UniformLeverPolicy,
 }
+
+# Old ids kept working so saved UI state / scripts don't break.
+_MODEL_ALIASES = {"gdp_nn": NeuralPolicy.model_id}
+
+# Backward-compatible name for the pre-objectives neural policy.
+GdpMaximizerPolicy = NeuralPolicy
 
 
 def available_models() -> List[dict]:
@@ -402,6 +568,7 @@ def available_models() -> List[dict]:
 
 
 def build_policy(model_id: str, param_specs: List[ParamSpec]) -> PolicyModel:
-    """Instantiate a policy by id, defaulting to the neural GDP maximizer."""
-    cls = _POLICY_CLASSES.get(model_id, GdpMaximizerPolicy)
+    """Instantiate a policy by id, defaulting to the neural policy."""
+    resolved = _MODEL_ALIASES.get(model_id, model_id)
+    cls = _POLICY_CLASSES.get(resolved, NeuralPolicy)
     return cls(param_specs)
