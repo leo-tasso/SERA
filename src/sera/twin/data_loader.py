@@ -74,6 +74,87 @@ class DataLoader:
         
         return df.dropna(subset=["value"])
 
+    # Provenance levels for a loaded indicator, in order of decreasing fidelity.
+    PROVENANCE_MEASURED = "measured"
+    PROVENANCE_DISAGG_REGIONAL = "disaggregated_regional"
+    PROVENANCE_DISAGG_NATIONAL = "disaggregated_national"
+    PROVENANCE_MIXED = "mixed"
+    PROVENANCE_UNKNOWN = "unknown"
+
+    def classify_provenance(
+        self,
+        indicator_name: str,
+        category: str,
+        coverage_threshold: float = 0.5,
+    ) -> str:
+        """Classify how an indicator's provincial values were obtained.
+
+        Many ISTAT series are published only at national (``IT``/``ITA``) or
+        regional/macro-area level and are spread to the 110 provinces on a
+        population-share basis, so their fine provincial variation is partly an
+        artifact (see the datasheet). This inspects the *raw* file's latest year
+        and reports whether the provinces are directly measured or filled by
+        disaggregation, so consumers (and the equity experiment) can tell how
+        much of a distributional result rests on real provincial variation.
+
+        Returns one of ``measured``, ``disaggregated_regional``,
+        ``disaggregated_national``, ``mixed``, or ``unknown``.
+        """
+        raw = self.load_indicator(indicator_name, category)
+        if raw.empty or "area_code" not in raw.columns or "year" not in raw.columns:
+            return self.PROVENANCE_UNKNOWN
+
+        latest_year = pd.to_numeric(raw["year"], errors="coerce").max()
+        latest = raw[pd.to_numeric(raw["year"], errors="coerce") == latest_year].copy()
+        if latest.empty:
+            return self.PROVENANCE_UNKNOWN
+
+        n_provinces = len(PROVINCE_SIGLAS_110)
+
+        def coverage(frame: pd.DataFrame) -> float:
+            if frame is None or frame.empty:
+                return 0.0
+            standardized = self.standardize_to_province_level(
+                frame.copy(), interpolate_missing=False
+            )
+            if standardized.empty:
+                return 0.0
+            return standardized["area_code"].nunique() / n_provinces
+
+        # Provinces resolvable directly, before any disaggregation.
+        direct_coverage = coverage(latest)
+        if direct_coverage >= coverage_threshold:
+            return self.PROVENANCE_MEASURED
+
+        codes = latest["area_code"].astype(str).str.upper()
+        has_national = bool((codes.str.startswith("IT") & (codes.str.len() <= 3)).any())
+
+        # Does regional disaggregation alone lift coverage over the threshold?
+        # (Needs the population file for weights; if absent, treat as no lift.)
+        try:
+            regional_coverage = coverage(
+                self.disaggregate_regional_to_provincial(latest.copy())
+            )
+        except Exception:
+            regional_coverage = 0.0
+        if regional_coverage >= coverage_threshold and regional_coverage > direct_coverage:
+            return self.PROVENANCE_DISAGG_REGIONAL
+
+        if has_national:
+            return self.PROVENANCE_DISAGG_NATIONAL
+
+        return self.PROVENANCE_MIXED
+
+    def panel_provenance(
+        self, indicators: Dict[str, Tuple[str, object]]
+    ) -> Dict[str, str]:
+        """Provenance label for every indicator in a panel ``{name: (category, ...)}``."""
+        provenance: Dict[str, str] = {}
+        for name, meta in indicators.items():
+            category = meta[0] if isinstance(meta, (tuple, list)) else meta
+            provenance[name] = self.classify_provenance(name, str(category))
+        return provenance
+
     def disaggregate_national_to_provincial(
         self,
         df: pd.DataFrame,

@@ -117,6 +117,7 @@ def cem_optimize(
     best_x = x0.copy()
     best_score = float(evaluate(best_x))
     start_score = best_score
+    history = [best_score]  # best-so-far per iteration, index 0 = untrained
     if progress is not None:
         progress(0, iterations, best_score)
 
@@ -135,10 +136,16 @@ def cem_optimize(
             best_score = float(scores[top])
             best_x = candidates[top].copy()
 
+        history.append(best_score)
         if progress is not None:
             progress(iteration, iterations, best_score)
 
-    return {"best_x": best_x, "best_score": best_score, "start_score": start_score}
+    return {
+        "best_x": best_x,
+        "best_score": best_score,
+        "start_score": start_score,
+        "history": history,
+    }
 
 
 def _kmeans(matrix: np.ndarray, n_clusters: int, rng: np.random.Generator,
@@ -489,6 +496,7 @@ class NeuralPolicy(PolicyModel):
         best_theta = self.theta.copy()
         best_score = self._evaluate(env, best_theta)
         start_score = best_score
+        history = [best_score]  # best-so-far per iteration, index 0 = untrained
         if progress is not None:
             progress(0, iterations, best_score)
 
@@ -515,12 +523,14 @@ class NeuralPolicy(PolicyModel):
             else:
                 self.theta = center
 
+            history.append(best_score)
             if progress is not None:
                 progress(iteration, iterations, best_score)
 
         self.theta = best_theta
         return _fit_report(
-            best_score, start_score, iterations, feature_keys=list(self.feature_keys)
+            best_score, start_score, iterations,
+            feature_keys=list(self.feature_keys), history=history,
         )
 
     def _evaluate(self, env: "RolloutEnv", theta: np.ndarray) -> float:
@@ -714,6 +724,7 @@ class DecisionListPolicy(NeuralPolicy):
         self.genome = result["best_x"]
         return _fit_report(
             result["best_score"], result["start_score"], iterations,
+            history=result.get("history"),
             rules=len(self.param_specs),
         )
 
@@ -827,7 +838,10 @@ class UniformLeverPolicy(PolicyModel):
             progress=progress,
         )
         self.x = result["best_x"]
-        return _fit_report(result["best_score"], result["start_score"], iterations)
+        return _fit_report(
+            result["best_score"], result["start_score"], iterations,
+            history=result.get("history"),
+        )
 
     def _evaluate(self, env: "RolloutEnv", x: np.ndarray) -> float:
         self.x = np.asarray(x, dtype=float)
@@ -1135,6 +1149,7 @@ class ClusterLeverPolicy(PolicyModel):
         self.genome = result["best_x"]
         return _fit_report(
             result["best_score"], result["start_score"], iterations,
+            history=result.get("history"),
             clusters=self._k,
         )
 
@@ -1255,8 +1270,19 @@ def available_models() -> List[dict]:
     ]
 
 
-def build_policy(model_id: str, param_specs: List[ParamSpec]) -> PolicyModel:
-    """Instantiate a policy by id, defaulting to the neural policy."""
+def build_policy(
+    model_id: str, param_specs: List[ParamSpec], seed: int = 0
+) -> PolicyModel:
+    """Instantiate a policy by id, defaulting to the neural policy.
+
+    ``seed`` controls the gradient-free optimizer's RNG; passing different
+    seeds gives the multi-seed replication the report uses to separate genuine
+    framework effects from search luck. Policies that take no seed (the
+    baseline) ignore it.
+    """
     resolved = _MODEL_ALIASES.get(model_id, model_id)
     cls = _POLICY_CLASSES.get(resolved, NeuralPolicy)
-    return cls(param_specs)
+    try:
+        return cls(param_specs, seed=int(seed))
+    except TypeError:
+        return cls(param_specs)

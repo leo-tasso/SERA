@@ -1429,6 +1429,9 @@ function App() {
   const [provinces, setProvinces] = useState([])
   const [selectedModel, setSelectedModel] = useState('neural')
   const [selectedObjective, setSelectedObjective] = useState('utilitarian')
+  // Per-objective tunable parameters (e.g. CVaR alpha, prioritarian rho),
+  // keyed by objective id; seeded from each objective's declared defaults.
+  const [objectiveParams, setObjectiveParams] = useState({})
   const [optimizeHorizon, setOptimizeHorizon] = useState(20)
   const [optimizeIterations, setOptimizeIterations] = useState(8)
   const [isOptimizing, setIsOptimizing] = useState(false)
@@ -1480,6 +1483,16 @@ function App() {
         setSpendingIntensityPct(Number(bootstrap.spendingIntensityPct) || 19.0)
         setModels(bootstrap.models || [])
         setObjectives(bootstrap.objectives || [])
+        const defaultObjectiveParams = {}
+        for (const objective of bootstrap.objectives || []) {
+          for (const param of objective.parameters || []) {
+            defaultObjectiveParams[objective.id] = {
+              ...(defaultObjectiveParams[objective.id] || {}),
+              [param.id]: param.default,
+            }
+          }
+        }
+        setObjectiveParams(defaultObjectiveParams)
         setProvinces(bootstrap.provinces || [])
         if ((bootstrap.models || []).length) {
           const trainable = bootstrap.models.find((model) => model.trainable) || bootstrap.models[0]
@@ -1671,6 +1684,7 @@ function App() {
         currentStateRows: latestStateRows,
         modelId: selectedModel,
         objectiveId: selectedObjective,
+        objectiveParams: objectiveParams[selectedObjective] || {},
         horizon: optimizeHorizon,
         iterations: optimizeIterations,
         spendingIntensityPct,
@@ -1867,6 +1881,39 @@ function App() {
               {(() => {
                 const meta = objectives.find((objective) => objective.id === selectedObjective)
                 return meta ? <p className="control-text model-desc">{meta.description}</p> : null
+              })()}
+              {(() => {
+                const meta = objectives.find((objective) => objective.id === selectedObjective)
+                const params = (meta && meta.parameters) || []
+                if (!params.length) return null
+                const current = objectiveParams[selectedObjective] || {}
+                return (
+                  <div className="model-inputs">
+                    {params.map((param) => {
+                      const value = hasValue(current[param.id]) ? current[param.id] : param.default
+                      return (
+                        <label className="model-field" key={param.id}>
+                          <span>{param.label}: {Number(value).toFixed(2)}</span>
+                          <input
+                            type="range"
+                            min={param.min}
+                            max={param.max}
+                            step={param.step}
+                            value={value}
+                            disabled={isOptimizing || isComparing || isPareto}
+                            onChange={(event) => {
+                              const next = Number(event.target.value)
+                              setObjectiveParams((prev) => ({
+                                ...prev,
+                                [selectedObjective]: { ...(prev[selectedObjective] || {}), [param.id]: next },
+                              }))
+                            }}
+                          />
+                        </label>
+                      )
+                    })}
+                  </div>
+                )
               })()}
               <div className="model-inputs">
                 <label className="model-field">

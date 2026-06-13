@@ -12,6 +12,13 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from sera.config import DATA_DIR
+from sera.twin.budget import (
+    SPENDING_PARAMS,
+    TAX_PARAMS,
+    apply_budget_constraint,
+    budget_usage,
+    make_constraint_fn,
+)
 from sera.twin.causal_graph import ANNUAL_PARAMETERS, INDICATOR_BOUNDS, get_parameter_reference
 from sera.twin.cli import load_initial_state
 from sera.twin.data_loader import DataLoader
@@ -33,31 +40,8 @@ from sera.twin.policy import (
 from sera.twin.province_mapping import PROVINCE_SIGLAS_110
 from sera.twin.simulator import CAUSAL_RULE_STRENGTH, DigitalTwinSimulator
 
-SPENDING_PARAMS = {
-    'healthcare_spending_allocation',
-    'education_spending_allocation',
-    'infrastructure_investment_allocation',
-    'social_welfare_spending_allocation',
-    'rd_innovation_incentives',
-    'green_energy_environment_investment',
-    'pension_retirement_spending',
-    'agriculture_support_level',
-    'manufacturing_incentives',
-    'tourism_support_level',
-    'small_business_support',
-    'public_sector_wage_levels',
-    'housing_urban_development_support',
-}
-
-# Revenue levers: these fund the national spending pool. Cutting them below
-# baseline shrinks the budget available for the spending levers above; raising
-# them grows it (at the cost of their own causal drag on the economy).
-TAX_PARAMS = {
-    'income_tax_rate',
-    'corporate_tax_rate',
-    'property_wealth_tax_rate',
-    'vat_consumption_tax_rate',
-}
+# SPENDING_PARAMS and TAX_PARAMS now live in sera.twin.budget (imported above)
+# so the headless experiments don't have to import this UI module to get them.
 
 INDICATORS = {
     'business_density': ('economic', 1),
@@ -239,54 +223,20 @@ def load_province_trends(payload: dict) -> dict:
     }
 
 
+def _param_baselines() -> dict[str, float]:
+    """Lever baselines (historical medians) keyed by lever name, for the budget."""
+    return {key: parameter_limits(key)[0] for key in ANNUAL_PARAMETERS}
+
+
 def _budget_usage(
     allocations: dict[str, dict[str, float]],
     current_state: pd.DataFrame,
     spending_intensity_pct: float = 19.0,
 ) -> tuple[float, float]:
-    """Return ``(total_used, base_pool)`` for the national spending budget.
-
-    Formulas (mirrored by the frontend ResourceMeter):
-      province_cost    = avg(val / baseline  for each spending param) * (intensity/100) * gdp
-      province_revenue = avg(val / baseline  for each tax param)      * (intensity/100) * gdp
-      base_pool        = sum of province revenues
-    At historical baseline values, cost == pool exactly (100% utilisation).
-    Cutting taxes below baseline shrinks the pool — the fiscal trade-off that
-    keeps "stimulate with tax cuts AND max spending everywhere" infeasible.
-    """
-    spending_keys = list(SPENDING_PARAMS)
-    tax_keys = list(TAX_PARAMS)
-    if not spending_keys:
-        return 0.0, 0.0
-
-    param_baselines = {
-        key: max(parameter_limits(key)[0], 1e-9) for key in spending_keys + tax_keys
-    }
-
-    gdp_by_province: dict[str, float] = {}
-    for _, row in current_state.iterrows():
-        code = str(row.get('area_code', '')).strip().upper()
-        gdp = float(row.get('gdp_per_capita', 0) or 0)
-        if gdp > 0:
-            gdp_by_province[code] = gdp
-
-    base_pool = 0.0
-    total_used = 0.0
-    for code, gdp in gdp_by_province.items():
-        prov = allocations.get(code, {})
-        revenue_ratio = sum(
-            float(prov.get(key, param_baselines[key])) / param_baselines[key]
-            for key in tax_keys
-        ) / max(len(tax_keys), 1)
-        base_pool += revenue_ratio * gdp * spending_intensity_pct / 100.0
-
-        cost_ratio = sum(
-            float(prov.get(key, param_baselines[key])) / param_baselines[key]
-            for key in spending_keys
-        ) / len(spending_keys)
-        total_used += cost_ratio * gdp * spending_intensity_pct / 100.0
-
-    return total_used, base_pool
+    """Bridge wrapper around :func:`sera.twin.budget.budget_usage`."""
+    return budget_usage(
+        allocations, current_state, spending_intensity_pct, _param_baselines()
+    )
 
 
 def _apply_budget_constraint(
@@ -295,39 +245,15 @@ def _apply_budget_constraint(
     spending_intensity_pct: float = 19.0,
     reserve_pool: float = 0.0,
 ) -> dict[str, dict[str, float]]:
-    """Scale spending params down if total national cost exceeds the available budget.
-
-    Unused budget from prior years (reserve_pool) extends the effective national pool.
-    """
-    spending_keys = list(SPENDING_PARAMS)
-    if not spending_keys:
-        return allocations
-
-    total_used, base_pool = _budget_usage(allocations, current_state, spending_intensity_pct)
-    total_pool = base_pool + reserve_pool
-    if total_pool <= 0 or total_used <= total_pool:
-        return allocations
-
-    scale = total_pool / total_used
-    scaled = {code: dict(params) for code, params in allocations.items()}
-    for code in scaled:
-        for key in spending_keys:
-            if key in scaled[code]:
-                scaled[code][key] = scaled[code][key] * scale
-    return scaled
+    """Bridge wrapper around :func:`sera.twin.budget.apply_budget_constraint`."""
+    return apply_budget_constraint(
+        allocations, current_state, spending_intensity_pct, _param_baselines(), reserve_pool
+    )
 
 
 def _make_constraint_fn(spending_intensity_pct: float):
-    """Build a horizon-aware budget constraint that tracks the reserve carry-over."""
-
-    def constraint_fn(allocations, state, reserve):
-        scaled = _apply_budget_constraint(allocations, state, spending_intensity_pct, reserve)
-        total_used, base_pool = _budget_usage(allocations, state, spending_intensity_pct)
-        spent = min(total_used, base_pool + reserve)
-        new_reserve = max(0.0, reserve + base_pool - spent)
-        return scaled, new_reserve
-
-    return constraint_fn
+    """Bridge wrapper around :func:`sera.twin.budget.make_constraint_fn`."""
+    return make_constraint_fn(spending_intensity_pct, _param_baselines())
 
 
 def build_parameters_frame(next_year: int, allocations: dict[str, dict[str, float]]) -> pd.DataFrame:
@@ -434,8 +360,10 @@ def optimize_policy(payload: dict) -> dict:
     iterations = int(payload.get('iterations') or 6)
     iterations = max(1, min(iterations, 40))
     model_id = str(payload.get('modelId') or 'neural')
+    seed = int(payload.get('seed') or 0)
     objective_id = str(payload.get('objectiveId') or DEFAULT_OBJECTIVE_ID)
-    objective = build_objective(objective_id)
+    objective_params = payload.get('objectiveParams') or {}
+    objective = build_objective(objective_id, **objective_params)
     spending_intensity_pct = float(payload.get('spendingIntensityPct') or get_spending_intensity_pct())
     reserve_pool = float(payload.get('reservePool') or 0.0)
     final_year = current_year + horizon
@@ -467,7 +395,7 @@ def optimize_policy(payload: dict) -> dict:
             base_year=current_year,
             constraint_fn=_make_constraint_fn(spending_intensity_pct),
             reserve_pool=reserve_pool,
-            objective=build_objective(objective_id),
+            objective=build_objective(objective_id, **objective_params),
         )
 
     env = make_env()
@@ -667,6 +595,7 @@ def compare_objectives(payload: dict) -> dict:
     horizon = max(1, min(int(payload.get('horizon') or 20), 50))
     iterations = max(1, min(int(payload.get('iterations') or 6), 40))
     model_id = str(payload.get('modelId') or 'neural')
+    seed = int(payload.get('seed') or 0)
     spending_intensity_pct = float(payload.get('spendingIntensityPct') or get_spending_intensity_pct())
     reserve_pool = float(payload.get('reservePool') or 0.0)
     final_year = current_year + horizon
@@ -702,13 +631,18 @@ def compare_objectives(payload: dict) -> dict:
     baseline_report = _trajectory_report(baseline_traj, baseline_gdp, current_year, final_year)
 
     objectives_meta = available_objectives()
+    requested_ids = payload.get('objectiveIds')
+    if requested_ids:
+        wanted = set(requested_ids)
+        objectives_meta = [meta for meta in objectives_meta if meta['id'] in wanted]
+    objective_params_by_id = payload.get('objectiveParams') or {}
     span = 88.0 / max(len(objectives_meta), 1)  # training spans the 8% -> 96% window
     results = []
     for index, meta in enumerate(objectives_meta):
-        objective = build_objective(meta['id'])
+        objective = build_objective(meta['id'], **(objective_params_by_id.get(meta['id']) or {}))
         window_start = 8.0 + span * index
         env = make_env(objective)
-        policy = build_policy(model_id, param_specs)
+        policy = build_policy(model_id, param_specs, seed=seed)
 
         train_info: dict = {}
         if policy.trainable:
@@ -774,6 +708,7 @@ def pareto_front(payload: dict) -> dict:
     horizon = max(1, min(int(payload.get('horizon') or 20), 50))
     generations = max(1, min(int(payload.get('iterations') or 6), 40))
     popsize = max(4, min(int(payload.get('popsize') or 12), 40))
+    n_clusters = max(1, min(int(payload.get('nClusters') or 1), 12))
     spending_intensity_pct = float(payload.get('spendingIntensityPct') or get_spending_intensity_pct())
     reserve_pool = float(payload.get('reservePool') or 0.0)
     final_year = current_year + horizon
@@ -818,7 +753,8 @@ def pareto_front(payload: dict) -> dict:
         )
 
     result = nsga2_front(
-        env, popsize=popsize, generations=generations, seed=0, progress=progress
+        env, popsize=popsize, generations=generations, seed=0,
+        n_clusters=n_clusters, progress=progress,
     )
 
     emit_progress(97, 'Collecting frontier points...')
@@ -830,22 +766,24 @@ def pareto_front(payload: dict) -> dict:
             spec.key: float(spec.min + float(np.clip(x[col], 0.0, 1.0)) * max(spec.max - spec.min, 0.0))
             for col, spec in enumerate(param_specs)
         }
-        points.append(
-            {
-                'levers': levers,
-                'finalGdpTotal': float(metrics['gdp_total']),
-                'finalGini': float(metrics['gini']),
-                'worstProvinceGdp': float(metrics['worst_gdp']),
-                'reservePool': float(metrics.get('reserve', 0.0)),
-                'tags': list(point.get('tags', [])),
-            }
-        )
+        entry = {
+            'levers': levers,
+            'finalGdpTotal': float(metrics['gdp_total']),
+            'finalGini': float(metrics['gini']),
+            'worstProvinceGdp': float(metrics['worst_gdp']),
+            'reservePool': float(metrics.get('reserve', 0.0)),
+            'tags': list(point.get('tags', [])),
+        }
+        if point.get('clusters'):
+            entry['clusters'] = point['clusters']
+        points.append(entry)
 
     return {
         'horizon': horizon,
         'finalYear': final_year,
         'generations': generations,
         'popsize': popsize,
+        'nClusters': int(result.get('nClusters', n_clusters)),
         'evaluations': int(result['evaluations']),
         'baseline': {
             'finalGdpTotal': baseline_report['finalGdpTotal'],

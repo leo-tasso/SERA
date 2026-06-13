@@ -103,9 +103,18 @@ trainable model can be paired with any objective:
 
 - `utilitarian` — total national GDP (sum across provinces; the classic default)
 - `rawlsian` — maximin: only the worst-off province counts (Rawls' difference principle)
+- `cvar` — smoothed maximin: the mean of the worst `alpha` fraction of provinces
+  (a denser-signal Rawlsian cousin; `alpha` is a slider)
+- `prioritarian` — sum of a concave transform `y^(1−rho)` of provincial GDP; the
+  concavity `rho` sweeps the continuum from utilitarian (`rho`=0) toward maximin
 - `egalitarian` — Sen welfare: total GDP × (1 − Gini across provinces)
+- `sufficientarian` — negative shortfall below a threshold set relative to the
+  starting median province (the threshold is a slider, not a hard-coded constant)
 - `wellbeing` — multi-indicator composite (GDP, life expectancy, unemployment, poverty)
   measured as percent change from the starting year
+
+Parameterized objectives expose their tunable value (`alpha`, `rho`, threshold) as a
+slider in the UI next to the objective dropdown, so the value judgment stays explicit.
 
 The UI exposes both choices (model and objective) in the header control panel and plots the
 objective's welfare trajectory against the baseline scenario, so the distributional
@@ -173,7 +182,9 @@ python -m pytest tests -q
 - `src/sera/config.py` — paths, ISTAT constants, indicator→category map
 - `src/sera/istat_client.py` — rate-limited, cached SDMX client
 - `src/sera/downloader.py` + `src/sera/downloaders/<category>/<indicator>.py` — CLI + one module per indicator
-- `src/sera/twin/` — data loading, model training, causal graph, simulator, policy models, ethical objectives, post-hoc explanations (`explain.py`), Pareto frontier search (`pareto.py`), CLI
+- `src/sera/twin/` — data loading, model training, causal graph, simulator, the national
+  budget constraint (`budget.py`), policy models, ethical objectives, post-hoc explanations
+  (`explain.py`), Pareto frontier search (`pareto.py`, uniform or per-cluster), CLI
 - `ui/` — Electron app (main.js, preload.js, renderer.js, backend_bridge.py)
 - `data/` — downloaded indicator CSVs (110 provinces, 2-letter sigle)
 - `tools/ad_hoc/` — one-off validation and demo scripts

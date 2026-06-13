@@ -19,6 +19,7 @@ optimizers only compare candidates under one objective at a time).
 
 from __future__ import annotations
 
+import math
 from abc import ABC, abstractmethod
 from typing import Dict, List
 
@@ -119,6 +120,122 @@ class EgalitarianObjective(Objective):
         return float(values.sum()) * (1.0 - gini(values))
 
 
+class CVaRObjective(Objective):
+    """Smoothed maximin: the mean of the worst ``alpha`` fraction of provinces.
+
+    Hard maximin (:class:`RawlsianObjective`) scores a single province out of
+    110, which is the sparsest training signal in the registry and the likely
+    reason it under-optimizes its own floor under a small search budget. This
+    Conditional-Value-at-Risk objective keeps the Rawlsian spirit --- it cares
+    only about the bottom of the distribution --- but averages the worst
+    ``alpha`` fraction (default 20%, i.e. ~22 provinces), giving the optimizer
+    a far denser gradient. As ``alpha`` -> 0 it recovers pure maximin; at
+    ``alpha`` = 1 it is the (rescaled) utilitarian mean. Comparing it against
+    hard maximin disentangles "the theory is destructive" from "the objective
+    was hard to optimize".
+    """
+
+    objective_id = "cvar"
+    label = "Rawlsian (smoothed, worst fraction)"
+    description = (
+        "Maximise the average GDP per capita of the worst-off fraction of "
+        "provinces (Conditional Value at Risk). A denser-signal cousin of "
+        "strict maximin: it still protects the bottom of the distribution but "
+        "averages the worst ~20% instead of the single poorest province."
+    )
+
+    def __init__(self, alpha: float = 0.2) -> None:
+        self.alpha = float(min(max(alpha, 0.01), 1.0))
+
+    def score_year(self, state: pd.DataFrame) -> float:
+        values = _gdp_values(state)
+        if values.size == 0:
+            return 0.0
+        k = max(1, int(math.ceil(self.alpha * values.size)))
+        worst_k = np.sort(values)[:k]
+        # Rescale by n (as Rawlsian does) so the score is comparable in
+        # magnitude to the national total in the UI's charts.
+        return float(worst_k.mean()) * values.size
+
+
+class PrioritarianObjective(Objective):
+    """Prioritarianism: sum of a strictly concave transform of provincial GDP.
+
+    Benefits matter more the worse off their recipient is (Parfit). The
+    concavity parameter ``rho`` interpolates the continuum between the
+    utilitarian and Rawlsian endpoints: ``rho`` = 0 is exactly utilitarian
+    (linear), and as ``rho`` -> 1 the transform approaches the logarithm and
+    the optimizer's behaviour slides toward maximin --- without Rawls'
+    exclusive focus on the minimum and without egalitarianism's concern for
+    relative gaps (it weighs levels, not gaps, so it evades the leveling-down
+    objection).
+    """
+
+    objective_id = "prioritarian"
+    label = "Prioritarian (priority to the worse-off)"
+    description = (
+        "Maximise the sum of a concave transform of provincial GDP per capita: "
+        "a euro is worth more to a poorer province than to a richer one. The "
+        "concavity slider tunes how much priority the worst-off get, sweeping "
+        "from utilitarian (no priority) toward Rawlsian (maximal priority)."
+    )
+
+    def __init__(self, rho: float = 0.5) -> None:
+        self.rho = float(min(max(rho, 0.0), 0.99))
+
+    def score_year(self, state: pd.DataFrame) -> float:
+        values = _gdp_values(state)
+        if values.size == 0:
+            return 0.0
+        values = np.clip(values, 0.0, None)
+        if self.rho <= 0.0:
+            return float(values.sum())
+        # CRRA-style increasing concave utility u(y) = y^(1 - rho).
+        return float(np.power(values, 1.0 - self.rho).sum())
+
+
+class SufficientarianObjective(Objective):
+    """Sufficientarianism: minimise the total shortfall below a threshold.
+
+    What matters morally is that each province has *enough*: inequalities above
+    the sufficiency threshold carry no weight (Frankfurt). The score is the
+    negative total shortfall below a threshold ``theta``, so it is maximised
+    (toward zero) by pulling provinces up to the line and is indifferent to
+    everything above it. Because "the threshold is the entire theory" and there
+    is no non-arbitrary euro value for "a sufficient province", ``theta`` is set
+    *relative to the starting distribution* (a fraction of the initial median
+    provincial GDP) and exposed as a user-facing parameter rather than a
+    hard-coded constant.
+    """
+
+    objective_id = "sufficientarian"
+    label = "Sufficientarian (everyone above a floor)"
+    description = (
+        "Minimise the total shortfall of provinces below a sufficiency "
+        "threshold (a fraction of the starting median province). Inequality "
+        "above the threshold is morally irrelevant; only the gap of the "
+        "below-threshold provinces counts. The threshold is yours to set."
+    )
+
+    def __init__(self, threshold_ratio: float = 0.8) -> None:
+        self.threshold_ratio = float(min(max(threshold_ratio, 0.0), 2.0))
+        self.threshold: float = 0.0
+
+    def prepare(self, initial_state: pd.DataFrame, indicator_cols: List[str]) -> None:
+        values = _gdp_values(initial_state)
+        median = float(np.median(values)) if values.size else 0.0
+        self.threshold = self.threshold_ratio * median
+
+    def score_year(self, state: pd.DataFrame) -> float:
+        values = _gdp_values(state)
+        if values.size == 0:
+            return 0.0
+        if self.threshold <= 0.0:
+            self.prepare(state, [])
+        shortfall = np.clip(self.threshold - values, 0.0, None).sum()
+        return -float(shortfall)
+
+
 class WellbeingObjective(Objective):
     """Multi-indicator composite: GDP, health, work, and poverty together."""
 
@@ -177,11 +294,55 @@ class WellbeingObjective(Objective):
 _OBJECTIVE_CLASSES = {
     UtilitarianGdpObjective.objective_id: UtilitarianGdpObjective,
     RawlsianObjective.objective_id: RawlsianObjective,
+    CVaRObjective.objective_id: CVaRObjective,
+    PrioritarianObjective.objective_id: PrioritarianObjective,
     EgalitarianObjective.objective_id: EgalitarianObjective,
+    SufficientarianObjective.objective_id: SufficientarianObjective,
     WellbeingObjective.objective_id: WellbeingObjective,
 }
 
+# Tunable parameters per objective, so the UI can render a slider next to the
+# dropdown and pass the chosen value to ``build_objective``. Each entry is the
+# constructor keyword plus its range; absent ids have no parameters.
+_OBJECTIVE_PARAMETERS: Dict[str, List[dict]] = {
+    CVaRObjective.objective_id: [
+        {
+            "id": "alpha",
+            "label": "Worst-off fraction",
+            "min": 0.05,
+            "max": 1.0,
+            "default": 0.2,
+            "step": 0.05,
+        }
+    ],
+    PrioritarianObjective.objective_id: [
+        {
+            "id": "rho",
+            "label": "Concavity (priority to the worse-off)",
+            "min": 0.0,
+            "max": 0.99,
+            "default": 0.5,
+            "step": 0.05,
+        }
+    ],
+    SufficientarianObjective.objective_id: [
+        {
+            "id": "threshold_ratio",
+            "label": "Threshold (× starting median province)",
+            "min": 0.3,
+            "max": 1.5,
+            "default": 0.8,
+            "step": 0.05,
+        }
+    ],
+}
+
 DEFAULT_OBJECTIVE_ID = UtilitarianGdpObjective.objective_id
+
+
+def objective_parameters(objective_id: str) -> List[dict]:
+    """Tunable-parameter metadata for one objective (empty if it has none)."""
+    return list(_OBJECTIVE_PARAMETERS.get(objective_id, []))
 
 
 def available_objectives() -> List[dict]:
@@ -191,12 +352,21 @@ def available_objectives() -> List[dict]:
             "id": cls.objective_id,
             "label": cls.label,
             "description": cls.description,
+            "parameters": objective_parameters(cls.objective_id),
         }
         for cls in _OBJECTIVE_CLASSES.values()
     ]
 
 
-def build_objective(objective_id: str) -> Objective:
-    """Instantiate an objective by id, defaulting to the utilitarian one."""
+def build_objective(objective_id: str, **params) -> Objective:
+    """Instantiate an objective by id, defaulting to the utilitarian one.
+
+    Extra keyword arguments configure tunable objectives (e.g. ``alpha`` for
+    CVaR, ``rho`` for prioritarian, ``threshold_ratio`` for sufficientarian);
+    unknown keys for a given objective are ignored, so the UI can pass whatever
+    slider value it has without knowing which objective consumes it.
+    """
     cls = _OBJECTIVE_CLASSES.get(objective_id, UtilitarianGdpObjective)
-    return cls()
+    allowed = {p["id"] for p in _OBJECTIVE_PARAMETERS.get(objective_id, [])}
+    kwargs = {key: value for key, value in params.items() if key in allowed}
+    return cls(**kwargs)

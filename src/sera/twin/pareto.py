@@ -32,17 +32,10 @@ CORNER_TAGS = {
 }
 
 
-def evaluate_levers(env, x: np.ndarray) -> dict:
-    """Roll out one shared lever vector and score the final simulated year."""
-    from sera.twin.policy import UniformLeverPolicy
-
-    policy = UniformLeverPolicy(env.param_specs)
-    policy.prepare(env)
-    policy.x = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
-    trajectory, gdp_series, _welfare, _allocations, reserve = env.rollout(policy)
-
+def _final_year_metrics(env, trajectory, reserve: float) -> dict:
+    """The three Pareto objectives, read off the final simulated year."""
     values = np.array([], dtype=float)
-    if not trajectory.empty and GDP_KEY in trajectory.columns:
+    if trajectory is not None and not trajectory.empty and GDP_KEY in trajectory.columns:
         final_year = int(env.base_year + env.horizon)
         final_rows = trajectory[trajectory["year"] == final_year]
         values = (
@@ -58,6 +51,28 @@ def evaluate_levers(env, x: np.ndarray) -> dict:
         "worst_gdp": float(values.min()),
         "reserve": float(reserve),
     }
+
+
+def _baseline_unit(env) -> np.ndarray:
+    """The historical baseline lever vector, normalised into the ``[0, 1]`` box."""
+    return np.array(
+        [
+            (spec.baseline - spec.min) / max(spec.max - spec.min, 1e-9)
+            for spec in env.param_specs
+        ],
+        dtype=float,
+    ).clip(0.0, 1.0)
+
+
+def evaluate_levers(env, x: np.ndarray) -> dict:
+    """Roll out one shared lever vector and score the final simulated year."""
+    from sera.twin.policy import UniformLeverPolicy
+
+    policy = UniformLeverPolicy(env.param_specs)
+    policy.prepare(env)
+    policy.x = np.clip(np.asarray(x, dtype=float), 0.0, 1.0)
+    trajectory, _gdp_series, _welfare, _allocations, reserve = env.rollout(policy)
+    return _final_year_metrics(env, trajectory, reserve)
 
 
 def _maximization_matrix(metrics: List[dict]) -> np.ndarray:
@@ -135,39 +150,103 @@ def _rank_and_crowding(F: np.ndarray) -> tuple:
     return ranks, crowding
 
 
+def _cluster_evaluator(env, n_clusters: int, seed: int):
+    """Build a province-clustered evaluator for the NSGA-II search.
+
+    Returns ``(evaluate, dim, decode)`` where the genome is one lever vector per
+    cluster (``dim = k * n_levers``), ``evaluate(genome)`` rolls the resulting
+    per-province policy through the twin, and ``decode(genome)`` yields a
+    human-readable per-cluster lever table plus a national-average vector. The
+    k-means assignment is fixed from the starting state, so the search only
+    varies the per-cluster levers --- which is what gives the front the power to
+    treat provinces differently and so expose a real efficiency--equity
+    trade-off that uniform national policy cannot.
+    """
+    from sera.twin.policy import ClusterLeverPolicy
+
+    policy = ClusterLeverPolicy(env.param_specs, n_clusters=int(n_clusters), seed=seed)
+    policy.prepare(env)
+    k = int(policy._k)
+    n_levers = len(env.param_specs)
+    mins = np.array([spec.min for spec in env.param_specs], dtype=float)
+    spans = np.array([max(spec.max - spec.min, 0.0) for spec in env.param_specs], dtype=float)
+    member_counts = [
+        sum(1 for cluster in policy.assignments.values() if cluster == c) for c in range(k)
+    ]
+
+    def evaluate(genome: np.ndarray) -> dict:
+        policy.genome = np.clip(np.asarray(genome, dtype=float), 0.0, 1.0)
+        trajectory, _gdp, _welfare, _allocations, reserve = env.rollout(policy)
+        return _final_year_metrics(env, trajectory, reserve)
+
+    def decode(genome: np.ndarray) -> dict:
+        levers = np.clip(np.asarray(genome, dtype=float), 0.0, 1.0).reshape(k, n_levers)
+        values = mins + levers * spans  # (k, n_levers)
+        # National average lever vector, population-unweighted across clusters,
+        # so the bridge's existing per-lever table still has something to show.
+        mean_unit = levers.mean(axis=0)
+        clusters = [
+            {
+                "id": c,
+                "provinces": member_counts[c],
+                "levers": {
+                    spec.key: float(values[c, col])
+                    for col, spec in enumerate(env.param_specs)
+                },
+            }
+            for c in range(k)
+        ]
+        return {"x": mean_unit, "clusters": clusters, "k": k}
+
+    return evaluate, k * n_levers, decode
+
+
 def nsga2_front(
     env,
     *,
     popsize: int = 12,
     generations: int = 6,
     seed: int = 0,
+    n_clusters: int = 1,
     mutation_prob: float = 0.35,
     mutation_sigma: float = 0.15,
     progress=None,
 ) -> dict:
-    """Evolve uniform lever vectors against (GDP, −Gini, worst-off GDP).
+    """Evolve lever vectors against (GDP, −Gini, worst-off GDP).
+
+    With ``n_clusters == 1`` the genome is a single national lever vector
+    applied identically to every province (the original behaviour). With
+    ``n_clusters > 1`` the genome is one lever vector per k-means cluster of
+    provinces, so the search can *target* regions --- the experiment shows this
+    is what turns the degenerate uniform "frontier" (a ray) into a real
+    efficiency--equity trade-off.
 
     Returns the non-dominated front over *every* evaluated candidate (an
     archive, not just the final population), with each extreme point tagged by
     the single-objective ethical framework it corresponds to.
     """
     rng = np.random.default_rng(seed)
-    dim = len(env.param_specs)
     popsize = max(4, int(popsize))
+    clustered = int(n_clusters) > 1
+
+    if clustered:
+        evaluate, dim, decode = _cluster_evaluator(env, int(n_clusters), seed)
+        baseline_x = np.tile(_baseline_unit(env), dim // len(env.param_specs))
+    else:
+        decode = None
+        dim = len(env.param_specs)
+
+        def evaluate(x):
+            return evaluate_levers(env, x)
+
+        baseline_x = _baseline_unit(env)
 
     # Seed the population with the historical baseline and the mid-range point
     # so the front is anchored near "do nothing".
-    baseline_x = np.array(
-        [
-            (spec.baseline - spec.min) / max(spec.max - spec.min, 1e-9)
-            for spec in env.param_specs
-        ],
-        dtype=float,
-    ).clip(0.0, 1.0)
     population = np.vstack(
         [baseline_x, np.full(dim, 0.5), rng.uniform(0.0, 1.0, size=(popsize - 2, dim))]
     )
-    metrics = [evaluate_levers(env, x) for x in population]
+    metrics = [evaluate(x) for x in population]
     archive_x = [x.copy() for x in population]
     archive_metrics = list(metrics)
     if progress is not None:
@@ -192,7 +271,7 @@ def nsga2_front(
             child[mutate] += mutation_sigma * rng.standard_normal(int(mutate.sum()))
             children.append(np.clip(child, 0.0, 1.0))
         children = np.array(children)
-        child_metrics = [evaluate_levers(env, x) for x in children]
+        child_metrics = [evaluate(x) for x in children]
         archive_x.extend(x.copy() for x in children)
         archive_metrics.extend(child_metrics)
 
@@ -218,7 +297,13 @@ def nsga2_front(
         if key in seen:
             continue
         seen.add(key)
-        points.append({"x": archive_x[index], "metrics": archive_metrics[index]})
+        point = {"x": archive_x[index], "metrics": archive_metrics[index]}
+        if clustered:
+            decoded = decode(archive_x[index])
+            point["genome"] = archive_x[index]
+            point["x"] = decoded["x"]  # national-average vector for display
+            point["clusters"] = decoded["clusters"]
+        points.append(point)
     points.sort(key=lambda point: point["metrics"]["gini"])
 
     # Tag the extreme points with the ethical framework they correspond to.
@@ -238,4 +323,5 @@ def nsga2_front(
         "evaluations": len(archive_x),
         "popsize": int(popsize),
         "generations": int(generations),
+        "nClusters": int(n_clusters) if clustered else 1,
     }

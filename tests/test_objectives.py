@@ -124,10 +124,25 @@ class TestWellbeing:
 class TestRegistry:
     def test_available_objectives_metadata(self):
         objectives = {item["id"]: item for item in available_objectives()}
-        assert set(objectives) == {"utilitarian", "rawlsian", "egalitarian", "wellbeing"}
+        assert set(objectives) == {
+            "utilitarian", "rawlsian", "cvar", "prioritarian",
+            "egalitarian", "sufficientarian", "wellbeing",
+        }
         for item in objectives.values():
             assert item["label"]
             assert item["description"]
+            assert "parameters" in item  # may be empty, but always present
+
+    def test_parameterized_objectives_expose_parameters(self):
+        objectives = {item["id"]: item for item in available_objectives()}
+        for oid in ("cvar", "prioritarian", "sufficientarian"):
+            params = objectives[oid]["parameters"]
+            assert params and all({"id", "min", "max", "default"} <= set(p) for p in params)
+
+    def test_build_objective_accepts_and_filters_params(self):
+        # Known parameter is applied; unknown parameter is ignored (no crash).
+        assert build_objective("cvar", alpha=0.5).alpha == 0.5
+        assert build_objective("utilitarian", alpha=0.5).objective_id == "utilitarian"
 
     def test_build_objective_by_id(self):
         assert isinstance(build_objective("rawlsian"), RawlsianObjective)

@@ -142,3 +142,30 @@ class TestNsga2Front:
             progress=lambda gen, total, evals: calls.append(gen),
         )
         assert calls == [0, 1, 2]
+
+
+class TestClusteredFront:
+    def test_clustered_points_carry_cluster_tables(self):
+        env = make_env()
+        result = nsga2_front(env, popsize=8, generations=3, seed=0, n_clusters=3)
+        assert result["nClusters"] == 3
+        for point in result["points"]:
+            # x stays a national-average lever vector for display compatibility.
+            assert len(point["x"]) == len(SPECS)
+            assert "clusters" in point and point["clusters"]
+            for cluster in point["clusters"]:
+                assert set(cluster["levers"]) == {spec.key for spec in SPECS}
+
+    def test_clustering_can_separate_provinces(self):
+        # Per-province targeting should reach a wider spread of inequality than
+        # one shared national vector can, on a simulator built to reward it.
+        env = make_env()
+        uniform = nsga2_front(env, popsize=8, generations=4, seed=0, n_clusters=1)
+        clustered = nsga2_front(env, popsize=8, generations=4, seed=0, n_clusters=3)
+        uni_span = max(p["metrics"]["gini"] for p in uniform["points"]) - min(
+            p["metrics"]["gini"] for p in uniform["points"]
+        )
+        clu_span = max(p["metrics"]["gini"] for p in clustered["points"]) - min(
+            p["metrics"]["gini"] for p in clustered["points"]
+        )
+        assert clu_span >= uni_span
