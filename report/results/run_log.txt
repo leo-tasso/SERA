@@ -1,0 +1,50 @@
+Loading latest historical state...
+2026-06-12 19:15:50,768 - sera.twin.cli - INFO - Loading initial state for year 2025...
+2026-06-12 19:15:50,788 - sera.twin.cli - INFO - Using 2022 for business_density because 2025 is unavailable
+2026-06-12 19:15:50,859 - sera.twin.cli - INFO - Using 2023 for gdp_per_capita because 2025 is unavailable
+2026-06-12 19:15:50,929 - sera.twin.cli - INFO - Using 2024 for income because 2025 is unavailable
+2026-06-12 19:15:50,996 - sera.twin.cli - INFO - Using 2024 for poverty_rate because 2025 is unavailable
+2026-06-12 19:15:51,252 - sera.twin.cli - INFO - Using 2024 for completion_rates because 2025 is unavailable
+2026-06-12 19:15:51,337 - sera.twin.cli - INFO - Using 2024 for school_enrollment because 2025 is unavailable
+2026-06-12 19:15:51,527 - sera.twin.cli - INFO - Using 2024 for healthcare_spending_per_capita because 2025 is unavailable
+2026-06-12 19:15:51,607 - sera.twin.cli - INFO - Using 2022 for healthcare_worker_density because 2025 is unavailable
+2026-06-12 19:15:52,947 - sera.twin.cli - INFO - Using 2024 for life_expectancy because 2025 is unavailable
+2026-06-12 19:15:52,998 - sera.twin.cli - INFO - Using 2024 for digital_infrastructure because 2025 is unavailable
+2026-06-12 19:15:53,110 - sera.twin.cli - INFO - Using 2022 for patents because 2025 is unavailable
+2026-06-12 19:15:53,197 - sera.twin.cli - INFO - Using 2012 for transportation_access because 2025 is unavailable
+2026-06-12 19:15:53,281 - sera.twin.cli - INFO - Using 2023 for air_quality because 2025 is unavailable
+2026-06-12 19:15:53,356 - sera.twin.cli - INFO - Using 2024 for carbon_emissions because 2025 is unavailable
+2026-06-12 19:15:53,415 - sera.twin.cli - INFO - Using 2023 for green_urban_space_per_capita because 2025 is unavailable
+2026-06-12 19:15:53,557 - sera.twin.cli - INFO - Using 2021 for renewable_energy_percentage because 2025 is unavailable
+2026-06-12 19:15:53,631 - sera.twin.cli - INFO - Using 2023 for sustainability because 2025 is unavailable
+2026-06-12 19:15:53,736 - sera.twin.cli - INFO - Using 2023 for water_quality because 2025 is unavailable
+2026-06-12 19:15:54,015 - sera.twin.cli - INFO - Using 2012 for public_transportation_usage because 2025 is unavailable
+2026-06-12 19:15:54,073 - sera.twin.cli - INFO - Using 2024 for traffic_congestion because 2025 is unavailable
+2026-06-12 19:15:54,147 - sera.twin.cli - INFO - Using 2023 for crime_rate because 2025 is unavailable
+State: 110 provinces, year 2025
+=== compare-objectives ===
+@@PROGRESS@@{"percent": 2, "message": "Loading trained twin..."}
+@@PROGRESS@@{"percent": 4, "message": "Computing baseline trajectory..."}
+[1/4] Training neural on Utilitarian (total GDP): iteration 0/8 - best cumulative score 2,327,837.63
+@@PROGRESS@@{"percent": 8.0, "message": "[1/4] Training neural on Utilitarian (total GDP): iteration 0/8"}
+[1/4] Training neural on Utilitarian (total GDP): iteration 1/8 - best cumulative score 2,565,165.11
+@@PROGRESS@@{"percent": 10.2, "message": "[1/4] Training neural on Utilitarian (total GDP): iteration 1/8"}
+[1/4] Training neural on Utilitarian (total GDP): iteration 2/8 - best cumulative score 2,645,398.43
+@@PROGRESS@@{"percent": 12.5, "message": "[1/4] Training neural on Utilitarian (total GDP): iteration 2/8"}
+[1/4] Training neural on Utilitarian (total GDP): iteration 3/8 - best cumulative score 2,681,440.63
+@@PROGRESS@@{"percent": 14.8, "message": "[1/4] Training neural on Utilitarian (total GDP): iteration 3/8"}
+[1/4] Training neural on Utilitarian (total GDP): iteration 4/8 - best cumulative score 2,902,788.69
+@@PROGRESS@@{"percent": 17.0, "message": "[1/4] Training neural on Utilitarian (total GDP): iteration 4/8"}
+[1/4] Training neural on Utilitarian (total GDP): iteration 5/8 - best cumulative score 2,938,149.93
+@@PROGRESS@@{"percent": 19.2, "message": "[1/4] Training neural on Utilitarian (total GDP): iteration 5/8"}
+[1/4] Training neural on Utilitarian (total GDP): iteration 6/8 - best cumulative score 3,005,689.11
+@@PROGRESS@@{"percent": 21.5, "message": "[1/4] Training neural on Utilitarian (total GDP): iteration 6/8"}
+[1/4] Training neural on Utilitarian (total GDP): iteration 7/8 - best cumulative score 3,075,836.76
+@@PROGRESS@@{"percent": 23.8, "message": "[1/4] Training neural on Utilitarian (total GDP): iteration 7/8"}
+[1/4] Training neural on Utilitarian (total GDP): iteration 8/8 - best cumulative score 3,081,765.37
+@@PROGRESS@@{"percent": 26.0, "message": "[1/4] Training neural on Utilitarian (total GDP): iteration 8/8"}
+@@PROGRESS@@{"percent": 27.0, "message": "Rolling out Utilitarian (total GDP)..."}
+[2/4] Training neural on Rawlsian (worst-off province): iteration 0/8 - best cumulative score 216,954.20
+@@PROGRESS@@{"percent": 30.0, "message": "[2/4] Training neural on Rawlsian (worst-off province): iteration 0/8"}
+[2/4] Training neural on Rawlsian (worst-off province): iteration 1/8 - best cumulative score 240,119.87
+@@PROGRESS@@{"percent": 32.2, "message": "[2/4] Training neural on Rawlsian (worst-off province): iteration 1/8"}
