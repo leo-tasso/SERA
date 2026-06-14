@@ -31,7 +31,7 @@ AI Policy Optimization}\\[1ex]
 \author{Leonardo Tassinari\\
 University of Bologna\\
 Master in Artificial Intelligence\\
-\texttt{tassinari.leonardo.2000@gmail.com}}
+\texttt{leonardo.tassinari6@studio.unibo.it}}
 \date{June 2026}
 
 \begin{document}
@@ -40,7 +40,7 @@ Master in Artificial Intelligence\\
 
 \begin{abstract}
 This project studies the ethical governance of an AI system that advises on the
-allocation of public resources. SERA is a \emph{digital twin} of the 110 Italian
+allocation of public resources. SERA (Socio-Economic Resource Allocator) is a \emph{digital twin} of the 110 Italian
 provinces: it ingests $\sim$88 historical socioeconomic indicators (2001--2025)
 from the Italian National Institute of Statistics (ISTAT), trains one machine
 learning model per indicator, and simulates the provinces forward year by year
@@ -62,8 +62,8 @@ Act. The report includes an experimental comparison in which the same neural
 policy model is trained once per ethical framework from the same 2025 starting
 state and rolled out to \cmpFinalYear{}, replicated across several seeds: the
 frameworks drive the same optimizer to measurably different futures --- the
-distribution-blind utilitarian run grows the average but leaves the worst-off
-province lowest and most volatile, while maximin (and a smoothed
+distribution-blind utilitarian run grows the average most but leaves the
+worst-off province the lowest of the interventions, while maximin (and a smoothed
 Conditional-Value-at-Risk variant added to test its sparse signal) reliably
 raises the floor and reproduces the leveling-down objection by cutting the
 richest tail, and Sen welfare buys the highest floor among the growth-positive
@@ -96,8 +96,7 @@ pipeline of models reads as neutral in a way that the same judgment, stated in
 words, never would.
 
 This project confronts that observation directly. SERA (the name plays on the
-Italian \emph{sera}, ``evening'' --- the project icon is a sun setting behind a
-frowning horizon) is a digital twin of the Italian provinces. Italy is an ideal
+Italian \emph{sera} and is the acronym for ``Socio-Economic Resource Allocator'') is a digital twin of the Italian provinces. Italy is an ideal
 testbed for distributive questions: the North--South divide is one of the most
 persistent regional inequalities in Europe, and any national policy implicitly
 chooses between aggregate growth and territorial cohesion. SERA simulates the
@@ -108,7 +107,9 @@ conflated:
 
 \begin{enumerate}
     \item \textbf{What does the world do?} --- the twin: per-indicator ML models
-    plus a hand-written causal graph, with honestly documented uncertainty.
+    plus a causal graph that is hand-written but \emph{panel-reviewed} (its edge
+    directions checked against, and corrected by, the historical data;
+    Section~\ref{sec:datareview}), with honestly documented uncertainty.
     \item \textbf{How do we search?} --- the policy model: seven optimizers
     spanning an explainability spectrum from printable IF/THEN rules to a neural
     network.
@@ -282,7 +283,12 @@ to make (Section~\ref{sec:uncertainty}).
             constraint seam, and the seven policy models;
             \item \code{objectives.py} --- the seven ethical objectives;
             \item \code{explain.py} --- post-hoc audits for black-box policies;
-            \item \code{pareto.py} --- the NSGA-II efficiency--equity frontier;
+            \item \code{pareto.py} --- the NSGA-II efficiency--equity frontier
+            (uniform or per-cluster);
+            \item \code{panel\_estimation.py} --- fixed-effects panel estimation
+            that re-derives the twin's structure from the data, scores it against
+            the hand-written graph, and produces the reviewed edge signs the
+            simulator consumes (Section~\ref{sec:datareview});
             \item \code{cli.py} --- training and batch simulation.
         \end{itemize}
     \end{itemize}
@@ -416,12 +422,18 @@ absolute calibration. A simulated year proceeds in layers:
     many indicators to policy in the historical data is weak: the rules add a
     guaranteed domain-knowledge elasticity so every documented link responds
     even where the data is too noisy for the models to learn it.
-    \item \textbf{Inter-indicator propagation.} Effects flow along
-    indicator$\to$indicator edges (income $\to$ poverty and inequality,
-    unemployment $\to$ income and crime, business density $\to$ unemployment
-    and wages, carbon emissions $\to$ air quality and health, \dots) with a
-    dampening factor, so a lever's first-order effect ripples plausibly
-    through the system.
+    \item \textbf{Inter-indicator propagation (sign-aware, panel-reviewed).}
+    Effects flow along indicator$\to$indicator edges (income $\to$ poverty and
+    inequality, unemployment $\to$ income and crime, business density $\to$
+    unemployment and wages, carbon emissions $\to$ air quality and health,
+    \dots) with a dampening factor, so a lever's first-order effect ripples
+    through the system. Each edge now carries an explicit \emph{direction}: the
+    target moves with ($+$) or against ($-$) the source, taken from the
+    panel-estimated coupling where the data supports it and from documented
+    domain knowledge otherwise (Section~\ref{sec:datareview}). This corrects a
+    previous sign-\emph{less} implementation that pushed every target in the
+    direction of its source's change --- mis-signing every opposite-polarity
+    link such as income$\to$poverty.
     \item \textbf{Bounds and the realism cap.} Logical bounds are enforced
     (rates in $[0,100]$, Gini in $[0,1]$, life expectancy below 150, \dots),
     and a speed limit caps the year-over-year change of any indicator at
@@ -440,6 +452,62 @@ treats stating it as part of the ethics of the system
 (Section~\ref{sec:uncertainty}). The constants are exposed as constructor
 parameters of the simulator precisely so that sensitivity analysis can re-run
 any scenario under weaker and stronger assumptions.
+
+\subsection{What the data supports: estimating the twin's structure}
+\label{sec:datareview}
+
+A twin whose causal core is partly hand-written invites an obvious question:
+how much of that structure does the historical panel actually back? Rather than
+leave the answer to intuition, an analysis layer
+(\code{sera.twin.panel\_estimation}) re-estimates the twin's relationships from
+the data as a \emph{fixed-effects panel} --- subtracting province and year means
+so that a rich province being persistently rich, or a national boom year, cannot
+masquerade as a learned relationship --- and compares the result to what the
+twin asserts. Three findings, all reproducible via
+\code{tools/ad\_hoc/estimate\_twin\_structure.py}:
+
+\begin{itemize}
+    \item \textbf{The lever$\to$indicator response is unidentifiable, by data
+    availability.} All \strLevers{}/\strLevers{} policy levers are published only
+    at the national level: there is no province-level corporate-tax rate or
+    health-spending allocation to learn from, so the per-province lever values
+    the trainer sees are population-share artifacts of disaggregation, mutually
+    collinear and uninformative about policy. No model specification recovers a
+    provincial policy elasticity that the data does not contain. This is the
+    structural reason the hand-written rules, not the ML, must carry the lever
+    response.
+    \item \textbf{The indicator$\to$indicator graph \emph{is} mostly
+    data-backed.} Re-estimated under fixed effects, the documented edge
+    directions agree with the data on \strSignAgreeFE\% of the \strEdgesScored{}
+    in-panel edges --- well above chance, and a genuine endorsement of the
+    domain graph. The fixed effects matter: the same comparison on the pooled
+    specification the production trainer uses (no entity/year effects) scores
+    only \strSignAgreePooled\%, so the omitted contrast is part of why the
+    pooled ML reads as noise.
+    \item \textbf{Honest validation is much weaker than the in-sample fit.} The
+    random train/test split the trainer reports gives a flattering
+    $R^2 \approx \strRandomRtwo{}$; a time-ordered holdout (train on the earlier
+    years, test on the later ones) yields a strongly negative $R^2$ --- worse
+    than predicting the mean --- and only \strDirAcc\% directional accuracy on
+    next-year change. The optimistic number is a leakage artifact of shuffling
+    adjacent province--years, and the model card now reports the temporal figure
+    instead.
+\end{itemize}
+
+Acting on the second finding, the inter-indicator propagation is now
+\emph{wired to the reviewed graph}: each edge's direction is the sign of its
+panel-estimated coupling where the edge is estimable, documented domain
+knowledge where it is not, and \emph{dropped} where the data shows no link. Of
+the \strEdgesTotal{} hand-written edges, the review \textbf{flips
+\strEdgesFlipped{}} (whose documented sign the data contradicts --- e.g.\
+\code{school\_enrollment}$\to$\code{completion\_rates}) and \textbf{drops
+\strEdgesDropped{}} for lack of support (e.g.\
+\code{unemployment\_rate}$\to$\code{crime\_rate}, where \code{crime\_rate} is a
+disaggregated series carrying little provincial signal). The magnitudes stay
+hand-tuned and bracketed by the sensitivity band; only the \emph{directions} are
+data-governed, which is exactly what the analysis can defend. This is the one
+component the data lets the project move from asserted to estimated, and it does
+so without pretending the unidentifiable lever response can be learned too.
 
 \subsection{Policy levers and the budget constraint}
 \label{sec:budget}
@@ -1089,9 +1157,12 @@ response to that fact is procedural:
     parameter for exactly this purpose) and shows the spread as a shaded band.
     A wide band means the projection is mostly assumption. The band is a
     sensitivity analysis, not a confidence interval, and the UI says so.
-    \item \textbf{No forecast claims.} There is no held-out forecast
-    validation; the indicator models are fit on the full window and used only
-    for relative policy response. The model card states plainly: any claim of
+    \item \textbf{No forecast claims --- now measured, not just asserted.} The
+    indicator models are used only for relative policy response, and a temporal
+    backtest confirms why that restraint is necessary: a time-ordered holdout
+    gives a strongly negative $R^2$ (worse than predicting the mean) and only
+    \strDirAcc\% directional accuracy, against a flattering random-split
+    $R^2 \approx \strRandomRtwo{}$ (Section~\ref{sec:datareview}). Any claim of
     real-world accuracy is unsupported; outputs are internally consistent
     scenarios, not predictions.
     \item \textbf{Structural limits stated.} The $\pm6\%$/year cap excludes
@@ -1379,24 +1450,27 @@ Six observations, with the standing caveat that they describe the simulator
     budget, and search budget held fixed, swapping the per-year welfare
     function alone produces measurably different futures on all three
     evaluation axes (Table~\ref{tab:headline}): total GDP ranges from
-    \cmpRawlsGdpDelta\% (maximin) to \cmpEgalGdpDelta\% (Sen) versus baseline,
-    the Gini from \cmpCvarGini{} to \cmpUtilGini{}, and the floor from
-    \cmpUtilWorstDelta\% to \cmpCvarWorstDelta\%. The separations survive
+    \cmpRawlsGdpDelta\% (maximin) to \cmpUtilGdpDelta\% (utilitarian) versus
+    baseline, the Gini from \cmpCvarGini{} to \cmpWellGini{}, and the floor from
+    \cmpUtilWorstDelta\% to \cmpEgalWorstDelta\%. The separations survive
     replication where the trajectory bands (Figure~\ref{fig:trajectories}) do
     not overlap: the ethical choice is not decorative --- it is the difference
     between the rows.
-    \item \textbf{The utilitarian optimum grows the average but neglects ---
-    and destabilizes --- the floor.} Utilitarianism grows total GDP
-    (\cmpUtilGdpDelta\%) and leaves the Gini near baseline (\cmpUtilGini{}
-    vs.\ \baseGini), but the floor it leaves is both the \emph{lowest} of the
-    interventionist runs (\cmpUtilWorst, $+$\cmpUtilWorstDelta\% over baseline)
-    and \emph{by far the most variable across seeds} ($\pm$\cmpUtilWorstStd{}
-    in model units, against $\pm$\cmpRawlsWorstStd{} for maximin). The
-    distribution (Figure~\ref{fig:deltas}) confirms it: a broad spread with
-    some provinces slightly \emph{below} baseline. Indifferent to distribution
-    by construction, the sum-maximizer treats the worst-off as a coincidence
-    --- sometimes lifted, sometimes not --- which is exactly the classic
-    objection, now visible as variance rather than as a tidy concentration.
+    \item \textbf{The utilitarian optimum is a rising tide that under-serves the
+    floor.} Utilitarianism grows total GDP the most (\cmpUtilGdpDelta\%) and
+    leaves the Gini near baseline (\cmpUtilGini{} vs.\ \baseGini): the twin's
+    multiplicative, capped dynamics make the sum-maximizer lift nearly every
+    province by a similar amount (Figure~\ref{fig:deltas}, a tight box around
+    $+11\%$). But distribution-blindness shows where it counts --- the floor it
+    reaches ($+$\cmpUtilWorstDelta\%) is the \emph{lowest} of the interventions
+    and noticeably more seed-variable than the equity runs
+    ($\pm$\cmpUtilWorstStd{} on the worst-off province vs.\
+    $\pm$\cmpRawlsWorstStd{} for maximin and $\pm$\cmpEgalWorstStd{} for Sen).
+    The rising tide does lift the floor, but only incidentally, and the
+    frameworks that \emph{target} it reach $6$--$7$ points higher (below). The
+    classic objection survives, in a milder form than the textbook: not
+    sacrifice of the few, but indifference --- the worst-off rise as a
+    by-product rather than a goal.
     \item \textbf{Maximin reliably raises the floor --- and multi-seed
     replication is what shows it.} Under \cmpSeeds{} seeds, maximin lifts the
     worst-off province by \cmpRawlsWorstDelta\% (to \cmpRawlsWorst) with the
@@ -1411,35 +1485,35 @@ Six observations, with the standing caveat that they describe the simulator
     the multi-seed protocol of Section~\ref{sec:threats} matters: the headline
     of a gradient-free comparison can invert between seeds. What \emph{is}
     robust across seeds is the leveling-down \emph{shape}: maximin still cuts
-    the richest tail hard (down 30--40\% in Figure~\ref{fig:deltas}) because
-    everything above the minimum is worth nothing to it --- but the GDP it
-    concedes for the higher floor is now a modest \cmpRawlsGdpDelta\%, not the
-    catastrophe a single unlucky seed suggested.
-    \item \textbf{Smoothing maximin buys robustness, not a higher floor ---
-    answering the sparsity question.} The CVaR objective, scoring the worst
-    20\% of provinces instead of the single poorest, was included to test
-    whether maximin's sparse one-province signal was the real source of its
-    troubles. The verdict is nuanced and only visible because both ran under
-    the same seeds: CVaR reaches essentially the \emph{same} floor as hard
-    maximin (\cmpCvarWorst{} vs \cmpRawlsWorst) --- so the sparsity was not, in
-    the end, holding the floor down --- but it does so with less than a third
-    of the GDP variance ($\pm$\cmpCvarGdpStd{} vs $\pm$\cmpRawlsGdpStd) and
-    reaches the \emph{lowest Gini of any framework} (\cmpCvarGini). The denser
-    signal stabilizes the search and tightens inequality rather than lifting
-    the floor: a real, if undramatic, gain, and exactly the kind of claim that
-    can only be made when the theory is held fixed and the objective's
-    smoothness is the sole variable.
+    the richest tail hard (down roughly 35--45\% in Figure~\ref{fig:deltas})
+    because everything above the minimum is worth nothing to it --- and the GDP
+    it concedes for the higher floor is a real \cmpRawlsGdpDelta\%.
+    \item \textbf{Smoothing maximin dominates it --- answering the sparsity
+    question.} The CVaR objective, scoring the worst 20\% of provinces instead
+    of the single poorest, was included to test whether maximin's sparse
+    one-province signal was the real source of its troubles. Under the same
+    seeds the answer is now unambiguous: CVaR \emph{beats} hard maximin on every
+    axis at once --- a higher floor (\cmpCvarWorst{} vs \cmpRawlsWorst), less
+    GDP forgone (\cmpCvarGdpDelta\% vs \cmpRawlsGdpDelta\%), under a third of the
+    GDP variance ($\pm$\cmpCvarGdpStd{} vs $\pm$\cmpRawlsGdpStd), and the
+    \emph{lowest Gini of any framework} (\cmpCvarGini). The sparse one-province
+    signal was indeed holding maximin back; broadening it to the bottom quintile
+    --- still a thoroughly Rawlsian criterion --- recovers a strictly better
+    outcome on the difference principle's own terms. This is the clearest
+    payoff of holding the theory fixed and varying only the objective's
+    smoothness, and a concrete argument for preferring the CVaR form in
+    practice.
     \item \textbf{Sen welfare is the efficiency--equity sweet spot.} The
-    egalitarian run grows total GDP the most of any equity-minded framework
-    (\cmpEgalGdpDelta\%), reaches a floor tied with the maximin variants
-    (\cmpEgalWorstDelta\%), and holds the Gini at \cmpEgalGini{} --- achieved
-    (Figure~\ref{fig:deltas}) by lifting almost every province while trimming
-    only a handful of the richest. Because its score multiplies growth by
-    equality, it draws training signal from the whole distribution, which is
-    plausibly why it pairs a high floor with the best growth. The wellbeing run
-    lands nearby on GDP (\cmpWellGdpDelta\%) with a tight, uniform distribution
-    of gains routed through its health/employment/poverty channels rather than
-    GDP alone.
+    egalitarian run reaches the \emph{highest floor of any framework}
+    (\cmpEgalWorstDelta\%, at the lowest floor-variance $\pm$\cmpEgalWorstStd)
+    \emph{and} still grows total GDP (\cmpEgalGdpDelta\%), holding the Gini at
+    \cmpEgalGini{} --- achieved (Figure~\ref{fig:deltas}) by lifting almost
+    every province while trimming only a handful of the richest. Because its
+    score multiplies growth by equality, it draws training signal from the whole
+    distribution, which is plausibly why it alone pairs the top floor with
+    positive growth. The wellbeing run lands with the utilitarian on GDP
+    (\cmpWellGdpDelta\%) but distributes its gains tightly across every province,
+    routed through its health/employment/poverty channels rather than GDP alone.
     \item \textbf{The frontier exposes where the trade-off actually lives.}
     The uniform-lever Pareto search finds \emph{no} efficiency--equity
     trade-off --- efficiency and the floor co-move at correlation \parCorr{}
@@ -1481,10 +1555,10 @@ promises: with everything held fixed except the per-year welfare function, the
 same optimizer is pulled to measurably different futures, and the frameworks'
 \emph{relative signatures} are exactly as the theories say --- maximin and its
 CVaR cousin reliably raise the floor while cutting the richest tail, Sen
-welfare trades a few points of growth for a lower Gini and the highest floor
-among the efficient options, the wellbeing composite reroutes gains through
-non-GDP channels, and the distribution-blind utilitarian run grows the average
-while leaving the worst-off both lowest and most volatile. Two lessons
+welfare reaches the highest floor of all while still growing, the wellbeing
+composite reroutes gains through non-GDP channels, and the distribution-blind
+utilitarian run grows the average the most while leaving the worst-off lowest
+and more seed-variable than the frameworks that target it. Two lessons
 generalize beyond the numbers. The first is methodological and was bought
 precisely by the multi-seed protocol: a \emph{single}-seed version of this
 experiment had maximin's floor landing below the utilitarian one --- a tidy,
@@ -1494,9 +1568,10 @@ a cautionary tale about reading a gradient-free optimizer's headline off one
 run. The second is substantive: a moral principle's practical meaning depends
 on the response structure of the system it optimizes \emph{and} on how
 optimizable its objective is --- which is why we added the smoothed CVaR
-maximin, and why the lesson it teaches (denser signal bought robustness and a
-lower Gini but not a higher floor) could only be read off an experiment that
-held the theory fixed. The methodological content is the point: \emph{the moral
+maximin, and why the lesson it teaches (broadening maximin's one-province
+signal to the bottom quintile strictly improves the floor, the growth, and the
+inequality it delivers) could only be read off an experiment that held the
+theory fixed. The methodological content is the point: \emph{the moral
 criterion is an experimental variable}, and a system built this way can answer
 ``what would the Rawlsian recommendation cost, and who pays?'' with a number, a
 spread, and a map instead of a position paper.
@@ -1587,7 +1662,8 @@ principle's practical meaning depends both on the dynamics it optimizes and on
 how readily it can be optimized: maximin and its smoothed CVaR variant
 reliably protected the worst-off province (at a modest GDP cost and by visibly
 sacrificing the richest tail), while the distribution-blind utilitarian run
-grew the average but left the floor lowest and most volatile across seeds.
+grew the average most but left the floor lowest and more seed-variable than the
+frameworks that target it.
 That last comparison only became trustworthy under replication: a single seed
 had shown maximin's floor falling \emph{below} the utilitarian one --- a tidy
 ``maximin under-optimizes itself'' story that multi-seed replication exposed as

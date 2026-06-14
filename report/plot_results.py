@@ -350,6 +350,23 @@ def main() -> None:
               counts.get("disaggregated_national", 0) + counts.get("disaggregated_regional", 0))
         macro("provGdp", provenance.get("gdp_per_capita", "unknown").replace("_", " "))
 
+    # Twin-structure / data-review macros (improvement #3 + coupling wiring),
+    # sourced from the panel-estimation findings the tool writes.
+    findings_path = REPORT_DIR.parent / "docs" / "twin_structure_findings.json"
+    if findings_path.exists():
+        f = json.loads(findings_path.read_text())
+        prov = f["province"]
+        macro("strSignAgreeFE", f"{round(prov['sign_agreement_fe'] * 100)}")
+        macro("strSignAgreePooled", f"{round(prov['sign_agreement_pooled'] * 100)}")
+        macro("strEdgesScored", prov["edges_scored"])
+        macro("strDirAcc", f"{round(prov['direction_accuracy'] * 100)}")
+        macro("strRandomRtwo", f"{prov['random_r2_pooled']:+.2f}")
+        macro("strLeversNational", f["lever_granularity"]["national_or_regional_only"])
+        macro("strLevers", f["lever_granularity"]["levers"])
+        macro("strEdgesFlipped", f["wiring"]["flipped_count"])
+        macro("strEdgesDropped", f["wiring"]["dropped_count"])
+        macro("strEdgesTotal", f["wiring"]["edges_total"])
+
     (REPORT_DIR / "results_macros.tex").write_text("\n".join(lines) + "\n")
     print("Figures and results_macros.tex written.")
 

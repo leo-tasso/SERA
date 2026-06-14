@@ -74,18 +74,35 @@ caveats.
 
 ## Evaluation and validation
 
-Honest status: **there is no held-out forecast validation.** Specifically:
+Honest status: **there is no held-out forecast validation, and a temporal backtest
+shows the indicator dynamics do not generalize out-of-time.** Specifically:
 
-- The indicator models are fit on the full historical window; reported quality is
-  in-sample. The simulator design (anchoring + capped policy signal) deliberately uses
-  the models only for *relative* policy response, because their absolute calibration is
-  not trusted.
+- The indicator models are fit on the full historical window with a **random** train/test
+  split; that split reports an optimistic R² ≈ **+0.79**. A proper **temporal** holdout
+  (train ≤2018, test ≥2019) gives a **strongly negative** R² — worse than predicting the
+  mean — and only **~60% direction accuracy** on next-year change. The flattering number
+  is a leakage artifact of shuffling adjacent province-years. The simulator design
+  (anchoring + capped policy signal) already uses the models only for *relative* policy
+  response, because their absolute calibration is not trusted; this quantifies why.
+- **Lever→indicator response is unidentifiable from the data**: all 20 levers are
+  national-only series (no provincial variation), so the per-province values are
+  population-share artifacts. The trained ridge coefficients agree with the documented
+  lever direction only ~54% of the time (chance) and overshoot persistence ~10×, which is
+  what saturates the policy-signal cap — the differentiated lever structure necessarily
+  comes from the hand-written rules, not the ML.
+- The **indicator→indicator** graph, by contrast, *is* mostly data-backed: re-estimated as
+  a fixed-effects panel, its documented edge directions agree with the data **~76%** of the
+  time (vs. ~59% without fixed effects). It remains hand-written, but the data endorses it.
 - The causal-rule layer is hand-written domain knowledge, not estimated from data. Every
   optimizer run re-simulates the chosen policy with these rules at 0.5× and 1.5× strength
   and reports the spread (the UI's sensitivity band).
-- Policy training quality is reported per run (start vs. best objective score).
+- Policy training quality is reported per run (start vs. best objective score), now
+  averaged over multiple seeds with reported variance.
 - Unit tests cover mechanics (bounds, budget constraint, objective math, determinism),
   not predictive accuracy.
+
+All numbers above are reproducible via `tools/ad_hoc/estimate_twin_structure.py`; see
+[TWIN_STRUCTURE_ANALYSIS.md](TWIN_STRUCTURE_ANALYSIS.md) for the full breakdown.
 
 Any claim of real-world accuracy is therefore unsupported; treat outputs as internally
 consistent scenarios, not predictions.

@@ -1,0 +1,73 @@
+\documentclass[11pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{soul}
+
+\title{Machine Learning-Based Policy Optimization and Fairness Analysis in Socio-Economic Resource Allocation}
+\author{Leonardo Tassinari}
+\date{2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This project investigates the use of machine learning models for optimizing public resource allocation under socio-economic constraints, with a focus on fairness, inequality, and ethical decision-making. Using synthetic populations grounded in statistical data from the Italian National Institute of Statistics (Istat), the system learns allocation policies for scarce resources and evaluates their impact on different demographic and regional groups. 
+
+Rather than assuming a single notion of optimality, the project explicitly analyzes how different objective functions encode distinct ethical principles, and studies the trade-offs between efficiency, fairness, and interpretability. Learned policies are compared with classical rule-based allocation strategies to assess when and how machine learning approaches improve or undermine equitable outcomes.
+\end{abstract}
+
+\section{Description}
+
+The project combines agent-based simulation with supervised and reinforcement learning techniques to study resource allocation in socio-economic systems.
+
+A synthetic population is generated using statistical distributions derived from the Italian National Institute of Statistics (Istat), including features such as income level, education, employment status, geographic region, and demographic attributes. Particular attention is given to how assumptions in the data generation process may introduce or amplify biases.
+
+\hl{A machine learning model is trained to predict allocation decisions for a limited public resource (e.g., healthcare access, educational funding, or social subsidies).} The learning objective is defined in terms of a specified objective function (e.g., total welfare or fairness-adjusted utility), making explicit that different formulations correspond to different ethical priorities. The learning problem can be formulated either as:
+
+\begin{itemize}
+    \item a supervised learning problem, where simulated allocation policies are used as training targets;
+    \item or a reinforcement learning problem, where the model learns a policy that maximizes long-term utility under resource constraints.
+\end{itemize}
+
+In the reinforcement learning setting, the project also considers ethical risks related to exploration, where suboptimal or harmful decisions may occur during the learning process, as well as the impact of delayed consequences.
+
+The learned policies are evaluated across different demographic and socio-economic groups, including geographical disparities across Italian regions and differences in income, education, and employment status.
+
+\section{Ethical Framework}
+
+The project is grounded in multiple theories of distributive justice, each mapped to a different objective function: \textbf{utilitarianism} maximizes total utility, \textbf{egalitarianism} minimizes inequality, and \textbf{prioritarianism} gives greater weight to the worst-off. These frameworks provide a principled basis for comparing allocation strategies and the ethical commitments they reflect.
+
+\section{Fairness and Evaluation}
+
+Fairness is evaluated using group-based and individual-based metrics, including demographic parity difference, equal opportunity gap, individual fairness, and the Gini coefficient. The analysis also examines the limits of these metrics, since different fairness definitions may be incompatible and can imply conflicting policy recommendations.
+
+\section{Interpretability and Transparency}
+
+A key component of the project is the comparison between interpretable rule-based allocation strategies and potentially opaque machine learning models. The goal is to analyze the trade-offs between fairness, efficiency, and transparency, and to assess whether improvements in quantitative fairness justify reduced interpretability.
+
+\section{Goals}
+
+\begin{itemize}
+    \item Build a synthetic socio-economic dataset based on Istat statistical distributions.
+    \item Train machine learning models for resource allocation using supervised and/or reinforcement learning approaches.
+    \item Evaluate learned policies using both fairness metrics and inequality measures.
+    \item Compare ML-based allocation strategies with classical rule-based approaches.
+    \item Analyze the trade-offs between efficiency (total utility), fairness (inequality reduction), and interpretability.
+    \item Investigate how different ethical frameworks influence allocation outcomes.
+\end{itemize}
+
+\section{Expected Deliverables}
+
+\begin{itemize}
+    \item A synthetic dataset generator based on Istat socio-economic data.
+    \item A machine learning pipeline for learning allocation policies.
+    \item Implementation of fairness evaluation metrics and inequality measures.
+    \item Experimental comparison between ML-based and rule-based allocation strategies.
+    \item A graphical user interface for managing the project workflow and monitoring data generation, training progress, and evaluation results.
+    \item A final report analyzing fairness-efficiency-interpretability trade-offs and their ethical implications.
+\end{itemize}
+
+\end{document}

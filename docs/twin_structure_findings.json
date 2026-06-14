@@ -1,0 +1,103 @@
+{
+  "lever_granularity": {
+    "levers": 20,
+    "national_or_regional_only": 20,
+    "province_measured": 0
+  },
+  "wiring": {
+    "edges_total": 56,
+    "flipped": [
+      "school_enrollment->completion_rates",
+      "completion_rates->youth_employment"
+    ],
+    "dropped": [
+      "unemployment_rate->crime_rate",
+      "digital_infrastructure->business_density",
+      "transportation_access->business_density"
+    ],
+    "flipped_count": 2,
+    "dropped_count": 3
+  },
+  "province": {
+    "entities": 110,
+    "years": 25,
+    "rows": 2750,
+    "sign_agreement_fe": 0.7647058823529411,
+    "sign_agreement_pooled": 0.5882352941176471,
+    "edges_scored": 17,
+    "edge_precision_fe": 0.1724137931034483,
+    "edge_recall_fe": 0.1724137931034483,
+    "temporal_r2_pooled": -15.674362501105012,
+    "random_r2_pooled": 0.7928600732262628,
+    "temporal_r2_fe": -5.027795393685972,
+    "direction_accuracy": 0.6155204643841008,
+    "cutoff_year": 2019,
+    "contradicted_edges": [
+      {
+        "source": "school_enrollment",
+        "target": "completion_rates",
+        "documented_sign": 1,
+        "data_coef": -26.6366
+      },
+      {
+        "source": "completion_rates",
+        "target": "youth_employment",
+        "documented_sign": 1,
+        "data_coef": -1.0203
+      },
+      {
+        "source": "digital_infrastructure",
+        "target": "business_density",
+        "documented_sign": 1,
+        "data_coef": -0.0001
+      },
+      {
+        "source": "transportation_access",
+        "target": "business_density",
+        "documented_sign": 1,
+        "data_coef": -0.0001
+      }
+    ]
+  },
+  "region": {
+    "entities": 20,
+    "years": 25,
+    "rows": 500,
+    "sign_agreement_fe": 0.7647058823529411,
+    "sign_agreement_pooled": 0.6470588235294118,
+    "edges_scored": 17,
+    "edge_precision_fe": 0.2413793103448276,
+    "edge_recall_fe": 0.2413793103448276,
+    "temporal_r2_pooled": -28.211499450936977,
+    "random_r2_pooled": 0.8097429011974014,
+    "temporal_r2_fe": -6.3971312079796725,
+    "direction_accuracy": 0.6170075757575758,
+    "cutoff_year": 2019,
+    "contradicted_edges": [
+      {
+        "source": "school_enrollment",
+        "target": "completion_rates",
+        "documented_sign": 1,
+        "data_coef": -30.3036
+      },
+      {
+        "source": "completion_rates",
+        "target": "income",
+        "documented_sign": 1,
+        "data_coef": -6.4222
+      },
+      {
+        "source": "completion_rates",
+        "target": "youth_employment",
+        "documented_sign": 1,
+        "data_coef": -0.6919
+      },
+      {
+        "source": "transportation_access",
+        "target": "business_density",
+        "documented_sign": 1,
+        "data_coef": -0.0
+      }
+    ]
+  }
+}

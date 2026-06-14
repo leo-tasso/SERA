@@ -1,5 +1,6 @@
 """Main simulation engine for the digital twin."""
 
+import json
 import numpy as np
 import pandas as pd
 import logging
@@ -19,6 +20,52 @@ from sera.twin.causal_graph import (
 from sera.twin.model_trainer import ModelTrainer, IndicatorModel
 
 logger = logging.getLogger(__name__)
+
+
+def documented_coupling_signs() -> Dict[str, Dict[str, int]]:
+    """Documented sign of every hand-written indicator->indicator edge.
+
+    The product of the two indicators' "higher is better" directions: two
+    same-polarity indicators move together (+1), opposite-polarity ones move
+    against each other (-1). This replaces the old sign-*less* propagation that
+    pushed every target in the direction of its source's change.
+    """
+    signs: Dict[str, Dict[str, int]] = {}
+    for source, targets in INDICATOR_TO_INDICATORS.items():
+        for target in targets:
+            s = INDICATOR_EFFECT_DIRECTION.get(source, 0) * INDICATOR_EFFECT_DIRECTION.get(target, 0)
+            signs.setdefault(source, {})[target] = int(np.sign(s))
+    return signs
+
+
+_LEARNED_SIGNS_CACHE: Optional[Dict[str, Dict[str, int]]] = None
+
+
+def load_learned_coupling_signs(path: Optional[Path] = None) -> Dict[str, Dict[str, int]]:
+    """Load panel-reviewed edge signs written by ``sera.twin.panel_estimation``.
+
+    Returns ``{}`` if the artifact is absent, so the simulator falls back to the
+    documented signs. Cached after first read.
+    """
+    global _LEARNED_SIGNS_CACHE
+    if _LEARNED_SIGNS_CACHE is not None:
+        return _LEARNED_SIGNS_CACHE
+    if path is None:
+        try:
+            from sera.config import DATA_DIR
+            path = Path(DATA_DIR) / "learned_couplings.json"
+        except Exception:
+            path = None
+    signs: Dict[str, Dict[str, int]] = {}
+    if path is not None and Path(path).exists():
+        try:
+            payload = json.loads(Path(path).read_text())
+            raw = payload.get("signs", payload)
+            signs = {src: {tgt: int(v) for tgt, v in tgts.items()} for src, tgts in raw.items()}
+        except Exception:
+            logger.warning("Could not parse learned couplings at %s; using documented signs", path)
+    _LEARNED_SIGNS_CACHE = signs
+    return signs
 
 # Realism speed limit: the largest plausible year-over-year change for any
 # indicator. Without it, the multiplicative causal rules and inter-indicator
@@ -58,6 +105,7 @@ class DigitalTwinSimulator:
         parameters: List[str],
         causal_rule_strength: float = CAUSAL_RULE_STRENGTH,
         policy_signal_cap: float = POLICY_SIGNAL_CAP,
+        coupling_signs: Optional[Dict[str, Dict[str, int]]] = None,
     ):
         """Initialize simulator.
 
@@ -72,13 +120,31 @@ class DigitalTwinSimulator:
             policy_signal_cap: Cap on the trained models' relative policy
                 response per year (prediction under chosen levers vs. baseline
                 levers). Exposed for the same calibration/sensitivity reasons.
+            coupling_signs: Per-edge direction for inter-indicator propagation,
+                ``{source: {target: -1|0|+1}}``. If omitted, documented signs are
+                used and overlaid with panel-reviewed signs from
+                ``data/learned_couplings.json`` when present (see
+                :mod:`sera.twin.panel_estimation`).
         """
         self.trainer = trainer
         self.indicators = indicators
         self.parameters = parameters
         self.causal_rule_strength = float(causal_rule_strength)
         self.policy_signal_cap = float(policy_signal_cap)
+        self.coupling_signs = self._resolve_coupling_signs(coupling_signs)
         self.simulation_history: List[Dict] = []
+
+    @staticmethod
+    def _resolve_coupling_signs(
+        explicit: Optional[Dict[str, Dict[str, int]]],
+    ) -> Dict[str, Dict[str, int]]:
+        """Documented edge signs, overlaid with explicit or panel-learned signs."""
+        signs = {src: dict(tgts) for src, tgts in documented_coupling_signs().items()}
+        overlay = explicit if explicit is not None else load_learned_coupling_signs()
+        for source, targets in (overlay or {}).items():
+            for target, value in targets.items():
+                signs.setdefault(source, {})[target] = int(value)
+        return signs
 
     def simulate_year(
         self,
@@ -466,19 +532,25 @@ class DigitalTwinSimulator:
             
             # Get dependent indicators
             dependent_indicators = INDICATOR_TO_INDICATORS.get(source_indicator, [])
-            
+            edge_signs = self.coupling_signs.get(source_indicator, {})
+
             for target_indicator in dependent_indicators:
                 if target_indicator not in result.columns:
                     continue
-                
-                # Propagate effect: multiply dependent indicator change by source change
-                # Dampened to avoid explosive behavior
+
+                # Per-edge direction (panel-reviewed where available, else
+                # documented). A sign of 0 drops an edge the data does not
+                # support; otherwise the target moves with (+) or against (-)
+                # the source's change. Dampened to avoid explosive behavior.
+                sign = edge_signs.get(target_indicator, 1)
+                if sign == 0:
+                    continue
                 propagation_factor = 0.12
                 result[target_indicator] = (
                     result[target_indicator]
-                    * (1 + relative_change * propagation_factor)
+                    * (1 + relative_change * sign * propagation_factor)
                 )
-        
+
         return result
 
     def get_provincial_rankings(

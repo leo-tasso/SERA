@@ -1,0 +1,112 @@
+{
+  "signs": {
+    "school_enrollment": {
+      "completion_rates": -1,
+      "income": 1,
+      "unemployment_rate": -1,
+      "skills_match": 1
+    },
+    "completion_rates": {
+      "income": 1,
+      "unemployment_rate": -1,
+      "skills_match": 1,
+      "youth_employment": -1
+    },
+    "stem_participation": {
+      "patents": 1,
+      "startups": 1,
+      "r_and_d_spending": 1,
+      "income": 1
+    },
+    "adult_learning": {
+      "skills_match": 1,
+      "unemployment_rate": -1,
+      "average_wages": 1
+    },
+    "income": {
+      "poverty_rate": -1,
+      "gini_coefficient": -1,
+      "cost_of_living_index": -1
+    },
+    "average_wages": {
+      "income": 1,
+      "poverty_rate": -1,
+      "gini_coefficient": -1
+    },
+    "unemployment_rate": {
+      "income": -1,
+      "poverty_rate": 1,
+      "crime_rate": 0
+    },
+    "youth_employment": {
+      "income": 1,
+      "gini_coefficient": -1
+    },
+    "life_expectancy": {
+      "health_outcomes": 1,
+      "workforce productivity": 0
+    },
+    "health_outcomes": {
+      "life_expectancy": 1,
+      "unemployment_rate": -1
+    },
+    "business_density": {
+      "unemployment_rate": -1,
+      "average_wages": 1,
+      "gdp_per_capita": 1
+    },
+    "startups": {
+      "business_density": 1,
+      "unemployment_rate": -1,
+      "employment_by_industry_breakdown": 0
+    },
+    "digital_infrastructure": {
+      "business_density": 0,
+      "startups": 1
+    },
+    "transportation_access": {
+      "business_density": 0,
+      "fdi": 1
+    },
+    "r_and_d_spending": {
+      "patents": 1,
+      "startups": 1,
+      "gdp_per_capita": 1
+    },
+    "renewable_energy_percentage": {
+      "carbon_emissions": -1,
+      "electricity_prices": -1
+    },
+    "carbon_emissions": {
+      "air_quality": 1,
+      "health_outcomes": -1
+    },
+    "house_prices": {
+      "housing_affordability_ratio": 1,
+      "migration_flows": 1
+    },
+    "housing_affordability_ratio": {
+      "migration_flows": 1,
+      "population": 1
+    },
+    "population": {
+      "birth_rate": 1,
+      "migration_flows": 1,
+      "gdp_per_capita": 1
+    },
+    "migration_flows": {
+      "population": 1,
+      "age_distribution": 0
+    }
+  },
+  "flipped": [
+    "school_enrollment->completion_rates",
+    "completion_rates->youth_employment"
+  ],
+  "dropped": [
+    "unemployment_rate->crime_rate",
+    "digital_infrastructure->business_density",
+    "transportation_access->business_density"
+  ],
+  "level": "province"
+}

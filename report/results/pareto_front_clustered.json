@@ -34,9 +34,9 @@
         "housing_urban_development_support": 203.11977699854654,
         "environmental_regulations_strictness": 20.32799522047054
       },
-      "finalGdpTotal": 302737.79445935896,
-      "finalGini": 0.4106477274639362,
-      "worstProvinceGdp": 269.4806293921777,
+      "finalGdpTotal": 302737.7930502421,
+      "finalGini": 0.41064772796433013,
+      "worstProvinceGdp": 269.4806265067166,
       "reservePool": 0.0,
       "tags": [
         "egalitarian"
@@ -171,9 +171,9 @@
         "housing_urban_development_support": 190.4365758220697,
         "environmental_regulations_strictness": 25.635886790654897
       },
-      "finalGdpTotal": 306417.56916586956,
-      "finalGini": 0.411350854509944,
-      "worstProvinceGdp": 272.2453480904167,
+      "finalGdpTotal": 306417.56800490234,
+      "finalGini": 0.4113508548823035,
+      "worstProvinceGdp": 272.24534575804904,
       "reservePool": 0.0,
       "tags": [],
       "clusters": [
@@ -306,9 +306,9 @@
         "housing_urban_development_support": 146.28032990702332,
         "environmental_regulations_strictness": 26.348527381916995
       },
-      "finalGdpTotal": 321187.86522715795,
-      "finalGini": 0.41782819949092254,
-      "worstProvinceGdp": 281.3657107322074,
+      "finalGdpTotal": 321187.8653480296,
+      "finalGini": 0.41782819927792225,
+      "worstProvinceGdp": 281.3657111707001,
       "reservePool": 0.0,
       "tags": [
         "utilitarian",
