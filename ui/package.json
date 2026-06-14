@@ -6,6 +6,11 @@
   "description": "SERA — ethically-governed digital twin of the Italian provinces (control-room UI).",
   "author": "Leonardo Tassinari <leonardo.tassinari6@studio.unibo.it>",
   "license": "MIT",
+  "homepage": "https://github.com/leo-tasso/SERA",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/leo-tasso/SERA.git"
+  },
   "main": "main.js",
   "scripts": {
     "start": "electron .",
