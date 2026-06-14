@@ -1,6 +1,6 @@
-PWD C:\Users\Leonardo\Desktop\SERA\report
+PWD c:\Users\Leonardo\Desktop\SERA\report
 INPUT C:\Users\Leonardo\AppData\Local\MiKTeX\miktex\data\le\pdftex\pdflatex.fmt
-INPUT FinalReport_SERA.tex
+INPUT c:\Users\Leonardo\Desktop\SERA\report\FinalReport_SERA.tex
 OUTPUT FinalReport_SERA.log
 INPUT C:\Program Files\MiKTeX\tex\latex\base\article.cls
 INPUT C:\Program Files\MiKTeX\tex\latex\base\article.cls
@@ -384,6 +384,8 @@ INPUT .\figures\transparency.pdf
 INPUT .\figures\transparency.pdf
 INPUT .\figures\transparency.pdf
 INPUT .\figures\transparency.pdf
+INPUT C:\Program Files\MiKTeX\fonts\tfm\jknappen\ec\ecrm0900.tfm
+INPUT C:\Program Files\MiKTeX\fonts\tfm\jknappen\ec\ectt0900.tfm
 INPUT C:\Program Files\MiKTeX\fonts\tfm\jknappen\ec\ecbx0800.tfm
 INPUT C:\Program Files\MiKTeX\fonts\tfm\jknappen\ec\ecti0600.tfm
 INPUT C:\Program Files\MiKTeX\fonts\tfm\public\cm\cmbx10.tfm
@@ -394,6 +396,8 @@ INPUT .\FinalReport_SERA.out
 INPUT .\FinalReport_SERA.out
 INPUT C:\Users\Leonardo\AppData\Local\MiKTeX\fonts\pk\ljfour\jknappen\ec\dpi600\ecbx0800.pk
 INPUT C:\Users\Leonardo\AppData\Local\MiKTeX\fonts\pk\ljfour\jknappen\ec\dpi600\ecbx0800.pk
+INPUT C:\Users\Leonardo\AppData\Local\MiKTeX\fonts\pk\ljfour\jknappen\ec\dpi600\ectt0900.pk
+INPUT C:\Users\Leonardo\AppData\Local\MiKTeX\fonts\pk\ljfour\jknappen\ec\dpi600\ectt0900.pk
 INPUT C:\Users\Leonardo\AppData\Local\MiKTeX\fonts\pk\ljfour\jknappen\ec\dpi600\ectt1000.pk
 INPUT C:\Users\Leonardo\AppData\Local\MiKTeX\fonts\pk\ljfour\jknappen\ec\dpi600\ectt1000.pk
 INPUT C:\Users\Leonardo\AppData\Local\MiKTeX\fonts\pk\ljfour\jknappen\ec\dpi600\ecbi1095.pk
