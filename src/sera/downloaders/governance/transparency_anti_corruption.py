@@ -45,7 +45,9 @@ class TransparencyAntiCorruptionDownloader:
             json.dump(self.table_mapping, handle, indent=2, ensure_ascii=False)
         return mapping_path
 
-    def download_transparency_anti_corruption(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
+    def download_transparency_anti_corruption(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
         url = f"{self.base_url}?format=json&per_page=500"
         try:
             response = requests.get(url, timeout=10)
@@ -53,7 +55,9 @@ class TransparencyAntiCorruptionDownloader:
             data = response.json()
 
             if len(data) < 2 or not data[1]:
-                return pd.DataFrame(columns=["country_code", "year", "transparency_anti_corruption"])
+                return pd.DataFrame(
+                    columns=["country_code", "year", "transparency_anti_corruption"]
+                )
 
             records = []
             for item in data[1]:
@@ -69,7 +73,9 @@ class TransparencyAntiCorruptionDownloader:
                         )
 
             if not records:
-                return pd.DataFrame(columns=["country_code", "year", "transparency_anti_corruption"])
+                return pd.DataFrame(
+                    columns=["country_code", "year", "transparency_anti_corruption"]
+                )
 
             df = pd.DataFrame(records)
             return df.sort_values(["year"])
@@ -86,7 +92,9 @@ class TransparencyAntiCorruptionDownloader:
     ) -> Path:
         if output_path is None:
             indicator_dir = get_indicator_data_dir("transparency_anti_corruption")
-            output_path = indicator_dir / f"transparency_anti_corruption_raw_{start_year}_{end_year}.csv"
+            output_path = (
+                indicator_dir / f"transparency_anti_corruption_raw_{start_year}_{end_year}.csv"
+            )
 
         print(f"Downloading transparency/anti-corruption data ({start_year}-{end_year})...")
         df = self.download_transparency_anti_corruption(start_year=start_year, end_year=end_year)

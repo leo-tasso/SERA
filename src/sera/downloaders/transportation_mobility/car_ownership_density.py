@@ -8,8 +8,8 @@ from typing import Any, Optional
 import pandas as pd
 
 from sera.config import get_indicator_data_dir
-from sera.istat_client import IstatClient
 from sera.downloaders.demographic.population import PopulationDownloader
+from sera.istat_client import IstatClient
 
 
 class CarOwnershipDensityDownloader:
@@ -50,8 +50,12 @@ class CarOwnershipDensityDownloader:
             json.dump(self.table_mapping, handle, indent=2, ensure_ascii=False)
         return mapping_path
 
-    def download_car_ownership_density(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
-        csv_data = self.client.get_data(flow_id=self.flow_id, key="", start_year=start_year, end_year=end_year, format="csv")
+    def download_car_ownership_density(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
+        csv_data = self.client.get_data(
+            flow_id=self.flow_id, key="", start_year=start_year, end_year=end_year, format="csv"
+        )
         vehicles = pd.read_csv(io.StringIO(csv_data), low_memory=False)
         for column, expected in self.table_mapping["source"]["filters"].items():
             if column in vehicles.columns:
@@ -65,7 +69,9 @@ class CarOwnershipDensityDownloader:
         vehicles = vehicles.dropna(subset=["year", "vehicles"])
         vehicles = vehicles[(vehicles["year"] >= start_year) & (vehicles["year"] <= end_year)]
 
-        population = self.population_downloader.download_population(start_year=start_year, end_year=end_year)
+        population = self.population_downloader.download_population(
+            start_year=start_year, end_year=end_year
+        )
         if population.empty or "population" not in population.columns:
             return pd.DataFrame(columns=["area_code", "year", "car_ownership_density"])
         population = population[["area_code", "year", "population"]].copy()
@@ -73,7 +79,9 @@ class CarOwnershipDensityDownloader:
         merged["car_ownership_density"] = (merged["vehicles"] / merged["population"]) * 1000.0
         return merged[["area_code", "year", "car_ownership_density"]].sort_values("year")
 
-    def save_car_ownership_density_csv(self, output_path: Optional[Path] = None, start_year: int = 2001, end_year: int = 2025) -> Path:
+    def save_car_ownership_density_csv(
+        self, output_path: Optional[Path] = None, start_year: int = 2001, end_year: int = 2025
+    ) -> Path:
         if output_path is None:
             indicator_dir = get_indicator_data_dir("car_ownership_density")
             output_path = indicator_dir / f"car_ownership_density_raw_{start_year}_{end_year}.csv"

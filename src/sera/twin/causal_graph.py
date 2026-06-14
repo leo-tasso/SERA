@@ -1,7 +1,7 @@
 """Causal dependency graph defining relationships between annual parameters and indicators."""
 
 from pathlib import Path
-from typing import Dict, Set, List, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -415,9 +415,7 @@ def get_parameter_reference(parameter: str) -> Tuple[float, float]:
     if matching_files:
         try:
             frame = pd.read_csv(matching_files[0])
-            value_columns = [
-                col for col in frame.columns if col not in {"area_code", "year"}
-            ]
+            value_columns = [col for col in frame.columns if col not in {"area_code", "year"}]
             if value_columns:
                 series = pd.to_numeric(frame[value_columns[0]], errors="coerce").dropna()
                 if not series.empty:

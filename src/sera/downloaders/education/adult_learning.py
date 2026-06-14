@@ -59,7 +59,9 @@ class AdultLearningDownloader:
         df = pd.read_csv(io.StringIO(csv_data), low_memory=False)
 
         if df.empty:
-            return pd.DataFrame(columns=["area_code", "year", "vocational_training_attendance", "value"])
+            return pd.DataFrame(
+                columns=["area_code", "year", "vocational_training_attendance", "value"]
+            )
 
         df_clean = df[["REF_AREA", "VOCAT_TRAIN_ATT", "TIME_PERIOD", "OBS_VALUE"]].copy()
         df_clean.columns = ["area_code", "vocational_training_attendance", "year", "value"]
@@ -70,11 +72,13 @@ class AdultLearningDownloader:
         df_clean = df_clean[(df_clean["year"] >= start_year) & (df_clean["year"] <= end_year)]
 
         if "vocational_training_attendance" in df_clean.columns:
-            df_clean["vocational_training_attendance"] = df_clean["vocational_training_attendance"].astype(str)
+            df_clean["vocational_training_attendance"] = df_clean[
+                "vocational_training_attendance"
+            ].astype(str)
 
-        df_clean = df_clean.sort_values(["area_code", "year", "vocational_training_attendance"]).drop_duplicates(
-            subset=["area_code", "year", "vocational_training_attendance"]
-        )
+        df_clean = df_clean.sort_values(
+            ["area_code", "year", "vocational_training_attendance"]
+        ).drop_duplicates(subset=["area_code", "year", "vocational_training_attendance"])
 
         return df_clean
 

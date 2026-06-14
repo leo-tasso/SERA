@@ -49,7 +49,9 @@ class DigitalInfrastructureDownloader:
             json.dump(self.table_mapping, handle, indent=2, ensure_ascii=False)
         return mapping_path
 
-    def download_digital_infrastructure(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
+    def download_digital_infrastructure(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
         csv_data = self.client.get_data(
             flow_id=self.flow_id,
             key="",
@@ -70,10 +72,14 @@ class DigitalInfrastructureDownloader:
         df_clean = df[["REF_AREA", "TIME_PERIOD", "OBS_VALUE"]].copy()
         df_clean.columns = ["area_code", "year", "households_with_internet_pct"]
         df_clean["year"] = pd.to_numeric(df_clean["year"], errors="coerce")
-        df_clean["households_with_internet_pct"] = pd.to_numeric(df_clean["households_with_internet_pct"], errors="coerce")
+        df_clean["households_with_internet_pct"] = pd.to_numeric(
+            df_clean["households_with_internet_pct"], errors="coerce"
+        )
         df_clean = df_clean.dropna(subset=["year", "households_with_internet_pct"])
         df_clean = df_clean[(df_clean["year"] >= start_year) & (df_clean["year"] <= end_year)]
-        df_clean = df_clean.sort_values(["area_code", "year"]).drop_duplicates(subset=["area_code", "year"])
+        df_clean = df_clean.sort_values(["area_code", "year"]).drop_duplicates(
+            subset=["area_code", "year"]
+        )
         return df_clean
 
     def save_digital_infrastructure_csv(

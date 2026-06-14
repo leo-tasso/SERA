@@ -37,9 +37,7 @@ class GrowthSimulator:
         )
         result = current_state.copy()
         result["year"] = current_state["year"] + 1
-        result["gdp_per_capita"] = (
-            current_state["gdp_per_capita"].values + merged["lever_a"].values
-        )
+        result["gdp_per_capita"] = current_state["gdp_per_capita"].values + merged["lever_a"].values
         return result
 
 

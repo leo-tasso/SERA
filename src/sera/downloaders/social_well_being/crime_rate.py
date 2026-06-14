@@ -16,7 +16,9 @@ class CrimeRateDownloader:
     def __init__(self):
         self.country = "IT"
         self.indicator = "VC.IHR.PSRC.P5"
-        self.api_url = f"https://api.worldbank.org/v2/country/{self.country}/indicator/{self.indicator}"
+        self.api_url = (
+            f"https://api.worldbank.org/v2/country/{self.country}/indicator/{self.indicator}"
+        )
 
         self.table_mapping: dict[str, Any] = {
             "indicator": "crime_rate",
@@ -62,7 +64,9 @@ class CrimeRateDownloader:
         df_clean.columns = ["area_code", "year", "homicides_per_100k"]
 
         df_clean["year"] = pd.to_numeric(df_clean["year"], errors="coerce")
-        df_clean["homicides_per_100k"] = pd.to_numeric(df_clean["homicides_per_100k"], errors="coerce")
+        df_clean["homicides_per_100k"] = pd.to_numeric(
+            df_clean["homicides_per_100k"], errors="coerce"
+        )
         df_clean = df_clean.dropna(subset=["year", "homicides_per_100k"])
         df_clean = df_clean[(df_clean["year"] >= start_year) & (df_clean["year"] <= end_year)]
         df_clean = df_clean.sort_values("year")

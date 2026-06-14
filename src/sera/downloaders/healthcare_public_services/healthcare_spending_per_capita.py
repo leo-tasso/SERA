@@ -16,7 +16,9 @@ class HealthcareSpendingPerCapitaDownloader:
     def __init__(self):
         self.country = "IT"
         self.indicator = "SH.XPD.CHEX.PC.CD"
-        self.api_url = f"https://api.worldbank.org/v2/country/{self.country}/indicator/{self.indicator}"
+        self.api_url = (
+            f"https://api.worldbank.org/v2/country/{self.country}/indicator/{self.indicator}"
+        )
         self.table_mapping: dict[str, Any] = {
             "indicator": "healthcare_spending_per_capita",
             "source": {
@@ -45,25 +47,37 @@ class HealthcareSpendingPerCapitaDownloader:
             json.dump(self.table_mapping, handle, indent=2, ensure_ascii=False)
         return mapping_path
 
-    def download_healthcare_spending_per_capita(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
-        response = requests.get(self.api_url, params={"format": "json", "per_page": 1000}, timeout=120)
+    def download_healthcare_spending_per_capita(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
+        response = requests.get(
+            self.api_url, params={"format": "json", "per_page": 1000}, timeout=120
+        )
         response.raise_for_status()
         payload = response.json()
         if not isinstance(payload, list) or len(payload) < 2 or not isinstance(payload[1], list):
-            raise RuntimeError("Unexpected World Bank response format for healthcare_spending_per_capita.")
+            raise RuntimeError(
+                "Unexpected World Bank response format for healthcare_spending_per_capita."
+            )
         df = pd.DataFrame(payload[1])
         df_clean = df[["countryiso3code", "date", "value"]].copy()
         df_clean.columns = ["area_code", "year", "healthcare_spending_per_capita"]
         df_clean["year"] = pd.to_numeric(df_clean["year"], errors="coerce")
-        df_clean["healthcare_spending_per_capita"] = pd.to_numeric(df_clean["healthcare_spending_per_capita"], errors="coerce")
+        df_clean["healthcare_spending_per_capita"] = pd.to_numeric(
+            df_clean["healthcare_spending_per_capita"], errors="coerce"
+        )
         df_clean = df_clean.dropna(subset=["year", "healthcare_spending_per_capita"])
         df_clean = df_clean[(df_clean["year"] >= start_year) & (df_clean["year"] <= end_year)]
         return df_clean.sort_values("year")
 
-    def save_healthcare_spending_per_capita_csv(self, output_path: Optional[Path] = None, start_year: int = 2001, end_year: int = 2025) -> Path:
+    def save_healthcare_spending_per_capita_csv(
+        self, output_path: Optional[Path] = None, start_year: int = 2001, end_year: int = 2025
+    ) -> Path:
         if output_path is None:
             indicator_dir = get_indicator_data_dir("healthcare_spending_per_capita")
-            output_path = indicator_dir / f"healthcare_spending_per_capita_raw_{start_year}_{end_year}.csv"
+            output_path = (
+                indicator_dir / f"healthcare_spending_per_capita_raw_{start_year}_{end_year}.csv"
+            )
         print(f"Downloading healthcare spending per capita data ({start_year}-{end_year})...")
         df = self.download_healthcare_spending_per_capita(start_year=start_year, end_year=end_year)
         output_path.parent.mkdir(parents=True, exist_ok=True)

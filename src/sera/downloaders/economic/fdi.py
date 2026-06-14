@@ -16,7 +16,9 @@ class FdiDownloader:
     def __init__(self):
         self.country = "IT"
         self.indicator = "BX.KLT.DINV.CD.WD"
-        self.api_url = f"https://api.worldbank.org/v2/country/{self.country}/indicator/{self.indicator}"
+        self.api_url = (
+            f"https://api.worldbank.org/v2/country/{self.country}/indicator/{self.indicator}"
+        )
 
         self.table_mapping: dict[str, Any] = {
             "indicator": "fdi",

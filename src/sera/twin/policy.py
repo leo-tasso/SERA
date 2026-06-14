@@ -41,9 +41,8 @@ can show *why* a policy chose its levers, not just what it chose:
 from __future__ import annotations
 
 import logging
-import sys
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional
 
 import numpy as np
@@ -82,9 +81,9 @@ def _fit_report(best_score: float, start_score: float, iterations: int, **extra)
     report = {
         "best_score": float(best_score),
         "start_score": float(start_score),
-        "improvement_pct": float(100.0 * (best_score - start_score) / abs(start_score))
-        if start_score
-        else 0.0,
+        "improvement_pct": (
+            float(100.0 * (best_score - start_score) / abs(start_score)) if start_score else 0.0
+        ),
         "iterations": int(iterations),
     }
     report.update(extra)
@@ -148,8 +147,9 @@ def cem_optimize(
     }
 
 
-def _kmeans(matrix: np.ndarray, n_clusters: int, rng: np.random.Generator,
-            iterations: int = 30) -> np.ndarray:
+def _kmeans(
+    matrix: np.ndarray, n_clusters: int, rng: np.random.Generator, iterations: int = 30
+) -> np.ndarray:
     """Plain-NumPy Lloyd's k-means; returns the cluster index per row.
 
     Deterministic for a given matrix: the first centre is the row closest to
@@ -164,9 +164,7 @@ def _kmeans(matrix: np.ndarray, n_clusters: int, rng: np.random.Generator,
     first = int(np.argmin(((matrix - matrix.mean(axis=0)) ** 2).sum(axis=1)))
     centers = [matrix[first]]
     for _ in range(1, k):
-        dist2 = np.min(
-            [((matrix - center) ** 2).sum(axis=1) for center in centers], axis=0
-        )
+        dist2 = np.min([((matrix - center) ** 2).sum(axis=1) for center in centers], axis=0)
         centers.append(matrix[int(np.argmax(dist2))])
     centers = np.array(centers, dtype=float)
 
@@ -442,9 +440,7 @@ class NeuralPolicy(PolicyModel):
     def prepare(self, env: "RolloutEnv") -> None:
         """Lock in feature reference means and initialise weights from the env."""
         if not self.feature_keys:
-            self.feature_keys = [
-                key for key in PREFERRED_FEATURE_KEYS if key in env.indicator_cols
-            ]
+            self.feature_keys = [key for key in PREFERRED_FEATURE_KEYS if key in env.indicator_cols]
         self.ref_means = self._national_means(env.initial_state)
         self._mins = np.array([spec.min for spec in self.param_specs], dtype=float)
         self._spans = np.array(
@@ -460,8 +456,7 @@ class NeuralPolicy(PolicyModel):
         allocations: Dict[str, Dict[str, float]] = {}
         for index, code in enumerate(env.provinces):
             allocations[code] = {
-                spec.key: float(values[index, col])
-                for col, spec in enumerate(self.param_specs)
+                spec.key: float(values[index, col]) for col, spec in enumerate(self.param_specs)
             }
         return allocations
 
@@ -529,8 +524,11 @@ class NeuralPolicy(PolicyModel):
 
         self.theta = best_theta
         return _fit_report(
-            best_score, start_score, iterations,
-            feature_keys=list(self.feature_keys), history=history,
+            best_score,
+            start_score,
+            iterations,
+            feature_keys=list(self.feature_keys),
+            history=history,
         )
 
     def _evaluate(self, env: "RolloutEnv", theta: np.ndarray) -> float:
@@ -723,7 +721,9 @@ class DecisionListPolicy(NeuralPolicy):
         )
         self.genome = result["best_x"]
         return _fit_report(
-            result["best_score"], result["start_score"], iterations,
+            result["best_score"],
+            result["start_score"],
+            iterations,
             history=result.get("history"),
             rules=len(self.param_specs),
         )
@@ -809,9 +809,7 @@ class UniformLeverPolicy(PolicyModel):
         if self.x is None:
             self.prepare(env)
         values = self._mins + np.clip(self.x, 0.0, 1.0) * self._spans
-        shared = {
-            spec.key: float(values[col]) for col, spec in enumerate(self.param_specs)
-        }
+        shared = {spec.key: float(values[col]) for col, spec in enumerate(self.param_specs)}
         return {code: dict(shared) for code in env.provinces}
 
     def fit(
@@ -839,7 +837,9 @@ class UniformLeverPolicy(PolicyModel):
         )
         self.x = result["best_x"]
         return _fit_report(
-            result["best_score"], result["start_score"], iterations,
+            result["best_score"],
+            result["start_score"],
+            iterations,
             history=result.get("history"),
         )
 
@@ -962,9 +962,7 @@ class BayesianUniformPolicy(UniformLeverPolicy):
         self._gp = make_gp()
         self._gp.fit(self._X, self._y)
         self.x = best_x
-        return _fit_report(
-            best_score, start_score, iterations, evaluations=len(y)
-        )
+        return _fit_report(best_score, start_score, iterations, evaluations=len(y))
 
     def explain(self, env: Optional["RolloutEnv"] = None) -> Optional[dict]:
         if self._gp is None or self.x is None:
@@ -1118,8 +1116,7 @@ class ClusterLeverPolicy(PolicyModel):
         for code in env.provinces:
             cluster = self.assignments.get(code, 0)
             allocations[code] = {
-                spec.key: float(values[cluster, col])
-                for col, spec in enumerate(self.param_specs)
+                spec.key: float(values[cluster, col]) for col, spec in enumerate(self.param_specs)
             }
         return allocations
 
@@ -1148,7 +1145,9 @@ class ClusterLeverPolicy(PolicyModel):
         )
         self.genome = result["best_x"]
         return _fit_report(
-            result["best_score"], result["start_score"], iterations,
+            result["best_score"],
+            result["start_score"],
+            iterations,
             history=result.get("history"),
             clusters=self._k,
         )
@@ -1229,8 +1228,7 @@ class BlendedPolicy(PolicyModel):
         blended: Dict[str, Dict[str, float]] = {}
         for code, levers in inner_allocations.items():
             blended[code] = {
-                key: baselines.get(key, value)
-                + self.blend * (value - baselines.get(key, value))
+                key: baselines.get(key, value) + self.blend * (value - baselines.get(key, value))
                 for key, value in levers.items()
             }
         return blended
@@ -1270,9 +1268,7 @@ def available_models() -> List[dict]:
     ]
 
 
-def build_policy(
-    model_id: str, param_specs: List[ParamSpec], seed: int = 0
-) -> PolicyModel:
+def build_policy(model_id: str, param_specs: List[ParamSpec], seed: int = 0) -> PolicyModel:
     """Instantiate a policy by id, defaulting to the neural policy.
 
     ``seed`` controls the gradient-free optimizer's RNG; passing different

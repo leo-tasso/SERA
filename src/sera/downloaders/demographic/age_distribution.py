@@ -1,14 +1,14 @@
 """Age distribution downloader."""
 
+import io
 import json
 from pathlib import Path
 from typing import Any, Optional
 
 import pandas as pd
-import io
 
+from sera.config import CACHE_DIR, get_indicator_data_dir
 from sera.istat_client import IstatClient
-from sera.config import DATA_DIR, CACHE_DIR, get_indicator_data_dir
 
 
 class AgeDistributionDownloader:
@@ -60,7 +60,11 @@ class AgeDistributionDownloader:
         key = f"A..{self.data_type}.1..1"
 
         csv_data = self.client.get_data(
-            flow_id=self.dataflow_id, key=key, start_year=start_year, end_year=end_year, format="csv"
+            flow_id=self.dataflow_id,
+            key=key,
+            start_year=start_year,
+            end_year=end_year,
+            format="csv",
         )
 
         df = pd.read_csv(io.StringIO(csv_data))

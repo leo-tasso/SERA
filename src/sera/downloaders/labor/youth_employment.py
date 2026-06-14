@@ -44,10 +44,12 @@ class YouthEmploymentDownloader:
             json.dump(self.table_mapping, handle, indent=2, ensure_ascii=False)
         return mapping_path
 
-    def download_youth_employment(self, start_year: int = 2004, end_year: int = 2025) -> pd.DataFrame:
+    def download_youth_employment(
+        self, start_year: int = 2004, end_year: int = 2025
+    ) -> pd.DataFrame:
         """Download youth employment rate from ISTAT."""
         print(f"Fetching ISTAT youth employment data from {self.flow_id}...")
-        
+
         # Fetch with no key to get all dimensions
         csv_data = self.client.get_data(
             flow_id=self.flow_id,
@@ -56,21 +58,23 @@ class YouthEmploymentDownloader:
             end_year=end_year,
             format="csv",
         )
-        
+
         if not csv_data or csv_data.strip() == "":
             print("Warning: No CSV data returned from ISTAT")
             return pd.DataFrame()
 
         df = pd.read_csv(io.StringIO(csv_data))
-        
+
         if df.empty or "OBS_VALUE" not in df.columns:
             return df
 
         # Filter for youth 15-24 age group, total sex, and employment rate data type
         if "AGE" in df.columns and "SEX" in df.columns and "DATA_TYPE" in df.columns:
-            df = df[(df.get("AGE", "") == "Y15-24") & 
-                   (df.get("SEX", "") == 9) & 
-                   (df.get("DATA_TYPE", "") == "EMP_R")]
+            df = df[
+                (df.get("AGE", "") == "Y15-24")
+                & (df.get("SEX", "") == 9)
+                & (df.get("DATA_TYPE", "") == "EMP_R")
+            ]
             print(f"After filtering: {df.shape[0]} rows")
 
         if df.empty:
@@ -81,10 +85,14 @@ class YouthEmploymentDownloader:
         df_clean.columns = ["area_code", "year", "youth_employment_rate"]
 
         df_clean["year"] = pd.to_numeric(df_clean["year"], errors="coerce")
-        df_clean["youth_employment_rate"] = pd.to_numeric(df_clean["youth_employment_rate"], errors="coerce")
+        df_clean["youth_employment_rate"] = pd.to_numeric(
+            df_clean["youth_employment_rate"], errors="coerce"
+        )
         df_clean = df_clean.dropna(subset=["year", "youth_employment_rate"])
         df_clean = df_clean[(df_clean["year"] >= start_year) & (df_clean["year"] <= end_year)]
-        df_clean = df_clean.sort_values(["area_code", "year"]).drop_duplicates(subset=["area_code", "year"])
+        df_clean = df_clean.sort_values(["area_code", "year"]).drop_duplicates(
+            subset=["area_code", "year"]
+        )
 
         return df_clean
 

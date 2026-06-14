@@ -17,7 +17,9 @@ class TaxRevenuePerCapitaDownloader:
         self.country = "IT"
         self.tax_indicator = "GC.TAX.TOTL.GD.ZS"
         self.gdp_per_capita_indicator = "NY.GDP.PCAP.CD"
-        self.tax_api_url = f"https://api.worldbank.org/v2/country/{self.country}/indicator/{self.tax_indicator}"
+        self.tax_api_url = (
+            f"https://api.worldbank.org/v2/country/{self.country}/indicator/{self.tax_indicator}"
+        )
         self.gdp_api_url = f"https://api.worldbank.org/v2/country/{self.country}/indicator/{self.gdp_per_capita_indicator}"
         self.table_mapping: dict[str, Any] = {
             "indicator": "tax_revenue_per_capita",
@@ -62,16 +64,22 @@ class TaxRevenuePerCapitaDownloader:
         df_clean = df_clean.dropna(subset=["year", value_column])
         return df_clean
 
-    def download_tax_revenue_per_capita(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
+    def download_tax_revenue_per_capita(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
         tax_df = self._fetch_indicator(self.tax_api_url, "tax_revenue_pct_gdp")
         gdp_df = self._fetch_indicator(self.gdp_api_url, "gdp_per_capita_usd")
         merged = tax_df.merge(gdp_df, on=["area_code", "year"], how="inner")
         merged = merged[(merged["year"] >= start_year) & (merged["year"] <= end_year)]
-        merged["tax_revenue_per_capita_usd"] = merged["tax_revenue_pct_gdp"] * merged["gdp_per_capita_usd"] / 100.0
+        merged["tax_revenue_per_capita_usd"] = (
+            merged["tax_revenue_pct_gdp"] * merged["gdp_per_capita_usd"] / 100.0
+        )
         merged = merged[["area_code", "year", "tax_revenue_per_capita_usd"]].sort_values("year")
         return merged
 
-    def save_tax_revenue_per_capita_csv(self, output_path: Optional[Path] = None, start_year: int = 2001, end_year: int = 2025) -> Path:
+    def save_tax_revenue_per_capita_csv(
+        self, output_path: Optional[Path] = None, start_year: int = 2001, end_year: int = 2025
+    ) -> Path:
         if output_path is None:
             indicator_dir = get_indicator_data_dir("tax_revenue_per_capita")
             output_path = indicator_dir / f"tax_revenue_per_capita_raw_{start_year}_{end_year}.csv"

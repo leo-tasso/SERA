@@ -16,7 +16,9 @@ class RegulatoryBurdenLevelDownloader:
     def __init__(self):
         self.country = "IT"
         self.indicator = "GOV_WGI_RQ.EST"
-        self.api_url = f"https://api.worldbank.org/v2/country/{self.country}/indicator/{self.indicator}"
+        self.api_url = (
+            f"https://api.worldbank.org/v2/country/{self.country}/indicator/{self.indicator}"
+        )
 
         self.table_mapping: dict[str, Any] = {
             "parameter": "regulatory_burden_level",
@@ -46,7 +48,9 @@ class RegulatoryBurdenLevelDownloader:
             json.dump(self.table_mapping, handle, indent=2, ensure_ascii=False)
         return mapping_path
 
-    def download_regulatory_burden_level(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
+    def download_regulatory_burden_level(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
         response = requests.get(
             self.api_url,
             params={"format": "json", "per_page": 1000},
@@ -63,7 +67,9 @@ class RegulatoryBurdenLevelDownloader:
         df_clean.columns = ["area_code", "year", "regulatory_burden_level"]
 
         df_clean["year"] = pd.to_numeric(df_clean["year"], errors="coerce")
-        df_clean["regulatory_burden_level"] = pd.to_numeric(df_clean["regulatory_burden_level"], errors="coerce")
+        df_clean["regulatory_burden_level"] = pd.to_numeric(
+            df_clean["regulatory_burden_level"], errors="coerce"
+        )
         df_clean = df_clean.dropna(subset=["year", "regulatory_burden_level"])
         df_clean = df_clean[(df_clean["year"] >= start_year) & (df_clean["year"] <= end_year)]
         df_clean = df_clean.sort_values("year")

@@ -71,7 +71,15 @@ class StartupsDownloader:
                 df = df[df[column].astype(str) == expected]
 
         if df.empty:
-            return pd.DataFrame(columns=["area_code", "year", "startup_employees", "total_employees", "startup_share"])
+            return pd.DataFrame(
+                columns=[
+                    "area_code",
+                    "year",
+                    "startup_employees",
+                    "total_employees",
+                    "startup_share",
+                ]
+            )
 
         df_clean = df[["REF_AREA", "AGE_ENTERPRISE", "TIME_PERIOD", "OBS_VALUE"]].copy()
         df_clean.columns = ["area_code", "age_enterprise", "year", "employees"]
@@ -97,7 +105,9 @@ class StartupsDownloader:
         merged["startup_employees"] = merged["startup_employees"].fillna(0.0)
         merged = merged[merged["total_employees"] > 0]
         merged["startup_share"] = (merged["startup_employees"] / merged["total_employees"]) * 100.0
-        merged = merged.sort_values(["area_code", "year"]).drop_duplicates(subset=["area_code", "year"])
+        merged = merged.sort_values(["area_code", "year"]).drop_duplicates(
+            subset=["area_code", "year"]
+        )
         return merged
 
     def save_startups_csv(

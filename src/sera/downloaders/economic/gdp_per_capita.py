@@ -59,13 +59,30 @@ class GdpPerCapitaDownloader:
         )
 
         df = pd.read_csv(io.StringIO(csv_data))
-        df_clean = df[["REF_AREA", "FREQ", "TIME_PERIOD", "OBS_VALUE", "DATA_TYPE_AGGR", "EDITION", "UNIT_MEAS"]].copy()
-        df_clean.columns = ["area_code", "frequency", "year", "gdp_per_capita", "measure_code", "edition", "unit"]
+        df_clean = df[
+            [
+                "REF_AREA",
+                "FREQ",
+                "TIME_PERIOD",
+                "OBS_VALUE",
+                "DATA_TYPE_AGGR",
+                "EDITION",
+                "UNIT_MEAS",
+            ]
+        ].copy()
+        df_clean.columns = [
+            "area_code",
+            "frequency",
+            "year",
+            "gdp_per_capita",
+            "measure_code",
+            "edition",
+            "unit",
+        ]
 
         # Keep the intended GDP-per-capita series definition.
         df_clean = df_clean[
-            (df_clean["measure_code"] == "B1G_B_W2_S1_R_FT")
-            & (df_clean["edition"] == "2025M12")
+            (df_clean["measure_code"] == "B1G_B_W2_S1_R_FT") & (df_clean["edition"] == "2025M12")
         ].copy()
 
         df_clean["year"] = pd.to_numeric(df_clean["year"], errors="coerce")

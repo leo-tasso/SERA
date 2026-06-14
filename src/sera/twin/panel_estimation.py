@@ -67,8 +67,10 @@ def load_panel(
     for estimating relationship *structure*).
     """
     loader = DataLoader(Path(data_dir))
-    indicator_cats = {name: meta[0] if isinstance(meta, (tuple, list)) else meta
-                      for name, meta in indicators.items()}
+    indicator_cats = {
+        name: meta[0] if isinstance(meta, (tuple, list)) else meta
+        for name, meta in indicators.items()
+    }
     combined_ind, _params = loader.prepare_training_data(
         {name: (cat, 1) for name, cat in indicator_cats.items()},
         {},  # parameters handled separately; not needed for indicator structure
@@ -166,9 +168,11 @@ def expected_sign(source: str, target: str) -> int:
     indicators' "higher is better" directions, so two same-polarity indicators
     move together (+) and opposite-polarity ones move against each other (-).
     """
-    return int(np.sign(
-        INDICATOR_EFFECT_DIRECTION.get(source, 0) * INDICATOR_EFFECT_DIRECTION.get(target, 0)
-    ))
+    return int(
+        np.sign(
+            INDICATOR_EFFECT_DIRECTION.get(source, 0) * INDICATOR_EFFECT_DIRECTION.get(target, 0)
+        )
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -436,7 +440,8 @@ def lever_data_granularity(data_dir: Path) -> dict:
     loader = DataLoader(Path(data_dir))
     provenance = {p: loader.classify_provenance(p, "annual_parameters") for p in ANNUAL_PARAMETERS}
     national = sum(
-        1 for v in provenance.values()
+        1
+        for v in provenance.values()
         if v in (DataLoader.PROVENANCE_DISAGG_NATIONAL, DataLoader.PROVENANCE_DISAGG_REGIONAL)
     )
     measured = sum(1 for v in provenance.values() if v == DataLoader.PROVENANCE_MEASURED)

@@ -125,8 +125,13 @@ class TestRegistry:
     def test_available_objectives_metadata(self):
         objectives = {item["id"]: item for item in available_objectives()}
         assert set(objectives) == {
-            "utilitarian", "rawlsian", "cvar", "prioritarian",
-            "egalitarian", "sufficientarian", "wellbeing",
+            "utilitarian",
+            "rawlsian",
+            "cvar",
+            "prioritarian",
+            "egalitarian",
+            "sufficientarian",
+            "wellbeing",
         }
         for item in objectives.values():
             assert item["label"]

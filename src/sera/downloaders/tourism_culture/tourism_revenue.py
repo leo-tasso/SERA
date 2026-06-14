@@ -16,7 +16,9 @@ class TourismRevenueDownloader:
     def __init__(self):
         self.country = "IT"
         self.indicator = "ST.INT.RCPT.CD"
-        self.api_url = f"https://api.worldbank.org/v2/country/{self.country}/indicator/{self.indicator}"
+        self.api_url = (
+            f"https://api.worldbank.org/v2/country/{self.country}/indicator/{self.indicator}"
+        )
         self.table_mapping: dict[str, Any] = {
             "indicator": "tourism_revenue",
             "source": {
@@ -45,8 +47,12 @@ class TourismRevenueDownloader:
             json.dump(self.table_mapping, handle, indent=2, ensure_ascii=False)
         return mapping_path
 
-    def download_tourism_revenue(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
-        response = requests.get(self.api_url, params={"format": "json", "per_page": 1000}, timeout=120)
+    def download_tourism_revenue(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
+        response = requests.get(
+            self.api_url, params={"format": "json", "per_page": 1000}, timeout=120
+        )
         response.raise_for_status()
         payload = response.json()
         if not isinstance(payload, list) or len(payload) < 2 or not isinstance(payload[1], list):
@@ -60,7 +66,9 @@ class TourismRevenueDownloader:
         df_clean = df_clean[(df_clean["year"] >= start_year) & (df_clean["year"] <= end_year)]
         return df_clean.sort_values("year")
 
-    def save_tourism_revenue_csv(self, output_path: Optional[Path] = None, start_year: int = 2001, end_year: int = 2025) -> Path:
+    def save_tourism_revenue_csv(
+        self, output_path: Optional[Path] = None, start_year: int = 2001, end_year: int = 2025
+    ) -> Path:
         if output_path is None:
             indicator_dir = get_indicator_data_dir("tourism_revenue")
             output_path = indicator_dir / f"tourism_revenue_raw_{start_year}_{end_year}.csv"

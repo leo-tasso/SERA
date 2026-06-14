@@ -47,7 +47,7 @@ class AverageWagesDownloader:
     def download_average_wages(self, start_year: int = 2014, end_year: int = 2023) -> pd.DataFrame:
         """Download average wages from ISTAT."""
         print(f"Fetching ISTAT average wages data from {self.flow_id}...")
-        
+
         # Fetch with no key to get all dimensions
         csv_data = self.client.get_data(
             flow_id=self.flow_id,
@@ -56,20 +56,19 @@ class AverageWagesDownloader:
             end_year=end_year,
             format="csv",
         )
-        
+
         if not csv_data or csv_data.strip() == "":
             print("Warning: No CSV data returned from ISTAT")
             return pd.DataFrame()
 
         df = pd.read_csv(io.StringIO(csv_data))
-        
+
         if df.empty or "OBS_VALUE" not in df.columns:
             return df
 
         # Filter for median hourly wage, total sex, total education, total citizenship
         if "DATA_TYPE" in df.columns and "SEX" in df.columns:
-            df = df[(df.get("DATA_TYPE", "") == "HOUWAG_ENTEMP_MED_MI") & 
-                   (df.get("SEX", "") == 9)]
+            df = df[(df.get("DATA_TYPE", "") == "HOUWAG_ENTEMP_MED_MI") & (df.get("SEX", "") == 9)]
             print(f"After filtering: {df.shape[0]} rows")
 
         if df.empty:
@@ -83,7 +82,9 @@ class AverageWagesDownloader:
         df_clean["hourly_wage_eur"] = pd.to_numeric(df_clean["hourly_wage_eur"], errors="coerce")
         df_clean = df_clean.dropna(subset=["year", "hourly_wage_eur"])
         df_clean = df_clean[(df_clean["year"] >= start_year) & (df_clean["year"] <= end_year)]
-        df_clean = df_clean.sort_values(["area_code", "year"]).drop_duplicates(subset=["area_code", "year"])
+        df_clean = df_clean.sort_values(["area_code", "year"]).drop_duplicates(
+            subset=["area_code", "year"]
+        )
 
         return df_clean
 

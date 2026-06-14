@@ -48,8 +48,12 @@ class ElectricityPricesDownloader:
             json.dump(self.table_mapping, handle, indent=2, ensure_ascii=False)
         return mapping_path
 
-    def download_electricity_prices(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
-        csv_data = self.client.get_data(flow_id=self.flow_id, key="", start_year=start_year, end_year=end_year, format="csv")
+    def download_electricity_prices(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
+        csv_data = self.client.get_data(
+            flow_id=self.flow_id, key="", start_year=start_year, end_year=end_year, format="csv"
+        )
         df = pd.read_csv(io.StringIO(csv_data), low_memory=False)
         for column, expected in self.table_mapping["source"]["filters"].items():
             if column in df.columns:
@@ -59,12 +63,16 @@ class ElectricityPricesDownloader:
         df_clean = df[["REF_AREA", "TIME_PERIOD", "OBS_VALUE"]].copy()
         df_clean.columns = ["area_code", "year", "electricity_price_proxy"]
         df_clean["year"] = pd.to_numeric(df_clean["year"], errors="coerce")
-        df_clean["electricity_price_proxy"] = pd.to_numeric(df_clean["electricity_price_proxy"], errors="coerce")
+        df_clean["electricity_price_proxy"] = pd.to_numeric(
+            df_clean["electricity_price_proxy"], errors="coerce"
+        )
         df_clean = df_clean.dropna(subset=["year", "electricity_price_proxy"])
         df_clean = df_clean[(df_clean["year"] >= start_year) & (df_clean["year"] <= end_year)]
         return df_clean.sort_values(["area_code", "year"])
 
-    def save_electricity_prices_csv(self, output_path: Optional[Path] = None, start_year: int = 2001, end_year: int = 2025) -> Path:
+    def save_electricity_prices_csv(
+        self, output_path: Optional[Path] = None, start_year: int = 2001, end_year: int = 2025
+    ) -> Path:
         if output_path is None:
             indicator_dir = get_indicator_data_dir("electricity_prices")
             output_path = indicator_dir / f"electricity_prices_raw_{start_year}_{end_year}.csv"

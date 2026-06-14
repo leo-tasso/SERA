@@ -47,7 +47,9 @@ class GiniCoefficientDownloader:
             json.dump(self.table_mapping, handle, indent=2, ensure_ascii=False)
         return mapping_path
 
-    def download_gini_coefficient(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
+    def download_gini_coefficient(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
         csv_data = self.client.get_data(
             flow_id=self.dataflow_id,
             key=self.key,
@@ -57,7 +59,17 @@ class GiniCoefficientDownloader:
         )
 
         df = pd.read_csv(io.StringIO(csv_data))
-        df_clean = df[["REF_AREA", "FREQ", "TIME_PERIOD", "OBS_VALUE", "DATA_TYPE", "MEASURE", "IMPUTED_RENTS"]].copy()
+        df_clean = df[
+            [
+                "REF_AREA",
+                "FREQ",
+                "TIME_PERIOD",
+                "OBS_VALUE",
+                "DATA_TYPE",
+                "MEASURE",
+                "IMPUTED_RENTS",
+            ]
+        ].copy()
         df_clean.columns = [
             "area_code",
             "frequency",

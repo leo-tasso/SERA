@@ -8,8 +8,8 @@ from typing import Any, Optional
 import pandas as pd
 
 from sera.config import get_indicator_data_dir
-from sera.istat_client import IstatClient
 from sera.downloaders.demographic.income import IncomeDownloader
+from sera.istat_client import IstatClient
 
 
 class HousingAffordabilityRatioDownloader:
@@ -57,7 +57,13 @@ class HousingAffordabilityRatioDownloader:
         return mapping_path
 
     def _download_house_prices(self, start_year: int, end_year: int) -> pd.DataFrame:
-        csv_data = self.client.get_data(flow_id=self.house_prices_flow_id, key="", start_year=start_year, end_year=end_year, format="csv")
+        csv_data = self.client.get_data(
+            flow_id=self.house_prices_flow_id,
+            key="",
+            start_year=start_year,
+            end_year=end_year,
+            format="csv",
+        )
         df = pd.read_csv(io.StringIO(csv_data), low_memory=False)
         filters = self.table_mapping["source"]["house_price_filters"]
         for column, expected in filters.items():
@@ -72,23 +78,39 @@ class HousingAffordabilityRatioDownloader:
         df = df.dropna(subset=["year", "house_price_index"])
         return df
 
-    def download_housing_affordability_ratio(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
+    def download_housing_affordability_ratio(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
         house_prices = self._download_house_prices(start_year=start_year, end_year=end_year)
         income = self.income_downloader.download_income(start_year=start_year, end_year=end_year)
         if house_prices.empty or income.empty:
-            return pd.DataFrame(columns=["area_code", "year", "house_price_index", "income", "housing_affordability_ratio"])
+            return pd.DataFrame(
+                columns=[
+                    "area_code",
+                    "year",
+                    "house_price_index",
+                    "income",
+                    "housing_affordability_ratio",
+                ]
+            )
         # National-only proxy series.
         house_prices = house_prices[house_prices["area_code"].astype(str) == "IT"]
         income = income[income["area_code"].astype(str) == "IT"]
-        merged = house_prices.merge(income[["area_code", "year", "income"]], on=["area_code", "year"], how="inner")
+        merged = house_prices.merge(
+            income[["area_code", "year", "income"]], on=["area_code", "year"], how="inner"
+        )
         merged["housing_affordability_ratio"] = merged["house_price_index"] / merged["income"]
         merged = merged.sort_values("year")
         return merged
 
-    def save_housing_affordability_ratio_csv(self, output_path: Optional[Path] = None, start_year: int = 2001, end_year: int = 2025) -> Path:
+    def save_housing_affordability_ratio_csv(
+        self, output_path: Optional[Path] = None, start_year: int = 2001, end_year: int = 2025
+    ) -> Path:
         if output_path is None:
             indicator_dir = get_indicator_data_dir("housing_affordability_ratio")
-            output_path = indicator_dir / f"housing_affordability_ratio_raw_{start_year}_{end_year}.csv"
+            output_path = (
+                indicator_dir / f"housing_affordability_ratio_raw_{start_year}_{end_year}.csv"
+            )
         print(f"Downloading housing affordability ratio data ({start_year}-{end_year})...")
         df = self.download_housing_affordability_ratio(start_year=start_year, end_year=end_year)
         output_path.parent.mkdir(parents=True, exist_ok=True)

@@ -44,20 +44,28 @@ class ManufacturingOutputDownloader:
             json.dump(self.table_mapping, handle, indent=2, ensure_ascii=False)
         return mapping_path
 
-    def download_manufacturing_output(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
-        csv_data = self.client.get_data(flow_id=self.flow_id, key="", start_year=start_year, end_year=end_year, format="csv")
+    def download_manufacturing_output(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
+        csv_data = self.client.get_data(
+            flow_id=self.flow_id, key="", start_year=start_year, end_year=end_year, format="csv"
+        )
         df = pd.read_csv(io.StringIO(csv_data), low_memory=False)
         if df.empty:
             return pd.DataFrame(columns=["area_code", "year", "manufacturing_output"])
         df_clean = df[["REF_AREA", "TIME_PERIOD", "OBS_VALUE"]].copy()
         df_clean.columns = ["area_code", "year", "manufacturing_output"]
         df_clean["year"] = pd.to_numeric(df_clean["year"], errors="coerce")
-        df_clean["manufacturing_output"] = pd.to_numeric(df_clean["manufacturing_output"], errors="coerce")
+        df_clean["manufacturing_output"] = pd.to_numeric(
+            df_clean["manufacturing_output"], errors="coerce"
+        )
         df_clean = df_clean.dropna(subset=["year", "manufacturing_output"])
         df_clean = df_clean[(df_clean["year"] >= start_year) & (df_clean["year"] <= end_year)]
         return df_clean.sort_values(["area_code", "year"])
 
-    def save_manufacturing_output_csv(self, output_path: Optional[Path] = None, start_year: int = 2001, end_year: int = 2025) -> Path:
+    def save_manufacturing_output_csv(
+        self, output_path: Optional[Path] = None, start_year: int = 2001, end_year: int = 2025
+    ) -> Path:
         if output_path is None:
             indicator_dir = get_indicator_data_dir("manufacturing_output")
             output_path = indicator_dir / f"manufacturing_output_raw_{start_year}_{end_year}.csv"

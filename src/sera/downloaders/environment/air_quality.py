@@ -72,7 +72,9 @@ class AirQualityDownloader:
         df_clean["pm10_annual_avg"] = pd.to_numeric(df_clean["pm10_annual_avg"], errors="coerce")
         df_clean = df_clean.dropna(subset=["year", "pm10_annual_avg"])
         df_clean = df_clean[(df_clean["year"] >= start_year) & (df_clean["year"] <= end_year)]
-        df_clean = df_clean.sort_values(["area_code", "year"]).drop_duplicates(subset=["area_code", "year"])
+        df_clean = df_clean.sort_values(["area_code", "year"]).drop_duplicates(
+            subset=["area_code", "year"]
+        )
         return df_clean
 
     def save_air_quality_csv(

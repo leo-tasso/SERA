@@ -44,10 +44,12 @@ class UnemploymentRateDownloader:
             json.dump(self.table_mapping, handle, indent=2, ensure_ascii=False)
         return mapping_path
 
-    def download_unemployment_rate(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
+    def download_unemployment_rate(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
         """Download unemployment rate from ISTAT with regional granularity."""
         print(f"Fetching ISTAT unemployment data from {self.flow_id}...")
-        
+
         # Fetch with no key to get all dimensions
         csv_data = self.client.get_data(
             flow_id=self.flow_id,
@@ -56,7 +58,7 @@ class UnemploymentRateDownloader:
             end_year=end_year,
             format="csv",
         )
-        
+
         print(f"Retrieved {len(csv_data) if csv_data else 0} bytes of data")
         if not csv_data or csv_data.strip() == "":
             print("Warning: No CSV data returned from ISTAT")
@@ -66,7 +68,7 @@ class UnemploymentRateDownloader:
         df = pd.read_csv(io.StringIO(csv_data))
         print(f"Parsed DataFrame shape: {df.shape}")
         print(f"Columns: {list(df.columns)}")
-        
+
         if df.empty or "OBS_VALUE" not in df.columns:
             print("Warning: Empty dataframe or missing OBS_VALUE column")
             return df
@@ -84,10 +86,14 @@ class UnemploymentRateDownloader:
         df_clean.columns = ["area_code", "year", "unemployment_count"]
 
         df_clean["year"] = pd.to_numeric(df_clean["year"], errors="coerce")
-        df_clean["unemployment_count"] = pd.to_numeric(df_clean["unemployment_count"], errors="coerce")
+        df_clean["unemployment_count"] = pd.to_numeric(
+            df_clean["unemployment_count"], errors="coerce"
+        )
         df_clean = df_clean.dropna(subset=["year", "unemployment_count"])
         df_clean = df_clean[(df_clean["year"] >= start_year) & (df_clean["year"] <= end_year)]
-        df_clean = df_clean.sort_values(["area_code", "year"]).drop_duplicates(subset=["area_code", "year"])
+        df_clean = df_clean.sort_values(["area_code", "year"]).drop_duplicates(
+            subset=["area_code", "year"]
+        )
 
         print(f"Final clean data: {df_clean.shape[0]} rows")
         return df_clean

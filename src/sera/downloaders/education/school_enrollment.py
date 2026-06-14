@@ -18,8 +18,8 @@ class SchoolEnrollmentDownloader:
         self.client = IstatClient()
         # ISTAT scuola datasets with territorial detail (NUTS/province-level where available).
         self.flow_ids = [
-            "52_1044_DF_DCIS_SCUOLE_5",   # Primary school
-            "52_1044_DF_DCIS_SCUOLE_8",   # Lower secondary school
+            "52_1044_DF_DCIS_SCUOLE_5",  # Primary school
+            "52_1044_DF_DCIS_SCUOLE_8",  # Lower secondary school
             "52_1044_DF_DCIS_SCUOLE_11",  # Upper secondary school
         ]
 
@@ -93,7 +93,9 @@ class SchoolEnrollmentDownloader:
 
         return df_clean
 
-    def download_school_enrollment(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
+    def download_school_enrollment(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
         """Download school enrollment with the best available ISTAT geographic detail."""
         print("Fetching ISTAT school enrollment data...")
 
@@ -105,7 +107,15 @@ class SchoolEnrollmentDownloader:
                 frames.append(frame)
 
         if not frames:
-            return pd.DataFrame(columns=["area_code", "school_level", "year", "enrollment_count", "enrollment_total"])
+            return pd.DataFrame(
+                columns=[
+                    "area_code",
+                    "school_level",
+                    "year",
+                    "enrollment_count",
+                    "enrollment_total",
+                ]
+            )
 
         df_all = pd.concat(frames, ignore_index=True)
         df_all = df_all[(df_all["year"] >= start_year) & (df_all["year"] <= end_year)]

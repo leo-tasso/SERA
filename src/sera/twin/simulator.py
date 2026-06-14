@@ -1,23 +1,24 @@
 """Main simulation engine for the digital twin."""
 
 import json
+import logging
+from pathlib import Path
+from typing import Dict, List, Optional
+
 import numpy as np
 import pandas as pd
-import logging
-from typing import Dict, List, Tuple, Optional
-from pathlib import Path
 
 from sera.twin.causal_graph import (
-    PARAMETER_TO_INDICATORS,
-    INDICATOR_TO_INDICATORS,
     INDICATOR_BOUNDS,
-    PARAMETER_EFFECT_DIRECTION,
     INDICATOR_EFFECT_DIRECTION,
-    get_parameter_signal,
-    get_parameter_reference,
+    INDICATOR_TO_INDICATORS,
+    PARAMETER_EFFECT_DIRECTION,
+    PARAMETER_TO_INDICATORS,
     get_indicator_bounds,
+    get_parameter_reference,
+    get_parameter_signal,
 )
-from sera.twin.model_trainer import ModelTrainer, IndicatorModel
+from sera.twin.model_trainer import ModelTrainer
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,9 @@ def documented_coupling_signs() -> Dict[str, Dict[str, int]]:
     signs: Dict[str, Dict[str, int]] = {}
     for source, targets in INDICATOR_TO_INDICATORS.items():
         for target in targets:
-            s = INDICATOR_EFFECT_DIRECTION.get(source, 0) * INDICATOR_EFFECT_DIRECTION.get(target, 0)
+            s = INDICATOR_EFFECT_DIRECTION.get(source, 0) * INDICATOR_EFFECT_DIRECTION.get(
+                target, 0
+            )
             signs.setdefault(source, {})[target] = int(np.sign(s))
     return signs
 
@@ -53,6 +56,7 @@ def load_learned_coupling_signs(path: Optional[Path] = None) -> Dict[str, Dict[s
     if path is None:
         try:
             from sera.config import DATA_DIR
+
             path = Path(DATA_DIR) / "learned_couplings.json"
         except Exception:
             path = None
@@ -66,6 +70,7 @@ def load_learned_coupling_signs(path: Optional[Path] = None) -> Dict[str, Dict[s
             logger.warning("Could not parse learned couplings at %s; using documented signs", path)
     _LEARNED_SIGNS_CACHE = signs
     return signs
+
 
 # Realism speed limit: the largest plausible year-over-year change for any
 # indicator. Without it, the multiplicative causal rules and inter-indicator
@@ -155,7 +160,7 @@ class DigitalTwinSimulator:
         max_annual_growth: Optional[float] = DEFAULT_MAX_ANNUAL_GROWTH,
     ) -> pd.DataFrame:
         """Simulate one year forward.
-        
+
         Args:
             current_state: DataFrame with current indicator values for each province
                           (area_code, year, indicator_1, indicator_2, ...)
@@ -163,19 +168,19 @@ class DigitalTwinSimulator:
                             (area_code, year, param_1, param_2, ...)
             apply_rules: Whether to apply causal rules
             apply_bounds: Whether to apply logical bounds to indicators
-            
+
         Returns:
             DataFrame with next-year indicator values
         """
         result = current_state[["area_code"]].copy()
         result["year"] = current_state["year"].max() + 1
-        
+
         # Get lagged indicator values
-        current_year = current_state["year"].iloc[0]
-        lagged_indicators = current_state[[col for col in current_state.columns 
-                                          if col not in ["area_code", "year"]]].copy()
+        lagged_indicators = current_state[
+            [col for col in current_state.columns if col not in ["area_code", "year"]]
+        ].copy()
         lagged_indicators = lagged_indicators.add_suffix("_lag1")
-        
+
         parameter_cols = [
             col for col in parameters_year.columns if col not in ["area_code", "year"]
         ]
@@ -195,11 +200,14 @@ class DigitalTwinSimulator:
         parameters_only = aligned_parameters[parameter_cols].reset_index(drop=True)
 
         # Combine lagged indicators with parameters
-        features = pd.concat([
-            current_state[["area_code"]].reset_index(drop=True),
-            lagged_indicators.reset_index(drop=True),
-            parameters_only,
-        ], axis=1)
+        features = pd.concat(
+            [
+                current_state[["area_code"]].reset_index(drop=True),
+                lagged_indicators.reset_index(drop=True),
+                parameters_only,
+            ],
+            axis=1,
+        )
 
         # A twin feature frame with every lever held at its historical baseline.
         # Comparing predictions against this isolates the *policy* effect and
@@ -207,11 +215,14 @@ class DigitalTwinSimulator:
         baseline_parameters = parameters_only.copy()
         for col in parameter_cols:
             baseline_parameters[col] = get_parameter_reference(col)[0]
-        features_baseline = pd.concat([
-            current_state[["area_code"]].reset_index(drop=True),
-            lagged_indicators.reset_index(drop=True),
-            baseline_parameters,
-        ], axis=1)
+        features_baseline = pd.concat(
+            [
+                current_state[["area_code"]].reset_index(drop=True),
+                lagged_indicators.reset_index(drop=True),
+                baseline_parameters,
+            ],
+            axis=1,
+        )
 
         # Predict each indicator
         predictions = {}
@@ -267,17 +278,15 @@ class DigitalTwinSimulator:
         # Create results dataframe
         for indicator, pred in predictions.items():
             result[indicator] = pred
-        
+
         # Apply causal rules (on the aligned parameters: same row order as result)
         if apply_rules:
-            result = self._apply_causal_rules(
-                result, aligned_parameters, lagged_indicators
-            )
-        
+            result = self._apply_causal_rules(result, aligned_parameters, lagged_indicators)
+
         # Apply bounds
         if apply_bounds:
             result = self._apply_bounds(result)
-        
+
         # Propagate inter-indicator effects
         result = self._propagate_indicator_effects(result, lagged_indicators)
 
@@ -300,24 +309,24 @@ class DigitalTwinSimulator:
         apply_rules: bool = True,
     ) -> pd.DataFrame:
         """Simulate a multi-year scenario.
-        
+
         Args:
             initial_state: Starting indicator values (year, area_code, indicators)
             parameters_path: List of parameter DataFrames for each year
             apply_rules: Whether to apply causal rules
-            
+
         Returns:
             DataFrame with all years of simulation (concatenated)
         """
         current_state = initial_state.copy()
         all_results = [current_state]
-        
+
         for year_idx, params_df in enumerate(parameters_path):
             logger.info(f"Simulating year {year_idx + 1}...")
             next_state = self.simulate_year(current_state, params_df, apply_rules)
             all_results.append(next_state)
             current_state = next_state
-        
+
         result = pd.concat(all_results, ignore_index=True)
         return result.sort_values(["area_code", "year"])
 
@@ -328,36 +337,36 @@ class DigitalTwinSimulator:
         base_multiplier: float = 0.04,
     ) -> np.ndarray:
         """Compute non-linear dampening multiplier that decreases near bounds.
-        
+
         As indicators approach their realistic maximum, policy effects diminish.
         This creates diminishing returns: easier to improve from 70→75 life exp
         than from 80→85.
-        
+
         Args:
             current_value: Current indicator values
             indicator: Indicator name (to get bounds)
             base_multiplier: Base effect strength (0.04)
-            
+
         Returns:
             Dampened multiplier array where effects weaken near bounds
         """
         lower_bound, upper_bound = get_indicator_bounds(indicator)
-        
+
         # Handle infinite bounds (no dampening)
         if np.isinf(upper_bound):
             return np.full_like(current_value, base_multiplier, dtype=float)
-        
+
         # Normalize current value to [0, 1] within realistic range
         # Lower bound = 0 (strong effect), Upper bound = 1 (weak effect)
         normalized = (current_value - lower_bound) / (upper_bound - lower_bound)
         normalized = np.clip(normalized, 0, 1)
-        
+
         # Quadratic dampening: effect decreases as value rises
         # At 0%: multiplier = 1.0x base
         # At 50%: multiplier = 0.75x base
         # At 100%: multiplier ~0x base (nearly impossible to improve)
-        dampening_factor = 1 - (normalized ** 1.5)  # Slightly softer than ^2
-        
+        dampening_factor = 1 - (normalized**1.5)  # Slightly softer than ^2
+
         return base_multiplier * dampening_factor
 
     def _apply_causal_rules(
@@ -381,70 +390,70 @@ class DigitalTwinSimulator:
             DataFrame with rule-adjusted predictions
         """
         result = predictions.copy()
-        
+
         # For each parameter, adjust affected indicators
         for parameter in self.parameters:
             if parameter not in parameters.columns:
                 continue
-            
+
             affected_indicators = PARAMETER_TO_INDICATORS.get(parameter, [])
             param_direction = PARAMETER_EFFECT_DIRECTION.get(parameter, 0)
-            
+
             if not affected_indicators or param_direction == 0:
                 continue
-            
+
             param_values = parameters[parameter].values
             param_signal = np.array(
                 [get_parameter_signal(parameter, value) for value in param_values]
             )
-            
+
             for indicator in affected_indicators:
                 if indicator not in result.columns:
                     continue
-                
+
                 indicator_direction = INDICATOR_EFFECT_DIRECTION.get(indicator, 0)
                 if indicator_direction == 0:
                     continue
-                
+
                 # Effect direction: multiply param and indicator directions
                 # If same sign: higher parameter helps the indicator
                 # If opposite sign: higher parameter hurts the indicator
                 effect_sign = param_direction * indicator_direction
-                
+
                 # Get non-linear dampening based on current value
                 # As indicator approaches upper bound, effect weakens
                 current_values = result[indicator].values
                 base_adjustment = effect_sign * param_signal * self.causal_rule_strength
-                
+
                 # Apply non-linear dampening
                 dampening = self._get_nonlinear_dampening(
                     current_values, indicator, base_multiplier=1.0
                 )
                 adjustment_factor = base_adjustment * dampening
-                
+
                 result[indicator] = result[indicator] * (1 + adjustment_factor)
-        
+
         return result
 
     def _apply_bounds(self, predictions: pd.DataFrame) -> pd.DataFrame:
         """Apply logical bounds to indicator values.
-        
+
         Args:
             predictions: DataFrame with predictions
-            
+
         Returns:
             DataFrame with bounded predictions
         """
         result = predictions.copy()
-        
+
         for indicator in self.indicators:
             if indicator not in result.columns:
                 continue
-            
+
             bounds = INDICATOR_BOUNDS.get(indicator)
             if bounds is None:
                 continue
-            
+
             lower, upper = bounds
             result[indicator] = np.clip(result[indicator], lower, upper)
 
@@ -500,28 +509,28 @@ class DigitalTwinSimulator:
         lagged_indicators: pd.DataFrame,
     ) -> pd.DataFrame:
         """Propagate inter-indicator effects through the system.
-        
+
         Args:
             predictions: DataFrame with predictions
             lagged_indicators: DataFrame with lagged values
-            
+
         Returns:
             DataFrame with propagated effects
         """
         result = predictions.copy()
-        
+
         # For each indicator, check if it has changed significantly
         for source_indicator in self.indicators:
             if source_indicator not in result.columns:
                 continue
-            
+
             lagged_col = f"{source_indicator}_lag1"
             if lagged_col not in lagged_indicators.columns:
                 continue
-            
+
             lagged_values = lagged_indicators[lagged_col].values
             predicted_values = result[source_indicator].values
-            
+
             # Calculate relative change
             with np.errstate(divide="ignore", invalid="ignore"):
                 relative_change = (predicted_values - lagged_values) / (
@@ -529,7 +538,7 @@ class DigitalTwinSimulator:
                 )
 
             relative_change = np.tanh(relative_change)
-            
+
             # Get dependent indicators
             dependent_indicators = INDICATOR_TO_INDICATORS.get(source_indicator, [])
             edge_signs = self.coupling_signs.get(source_indicator, {})
@@ -546,9 +555,8 @@ class DigitalTwinSimulator:
                 if sign == 0:
                     continue
                 propagation_factor = 0.12
-                result[target_indicator] = (
-                    result[target_indicator]
-                    * (1 + relative_change * sign * propagation_factor)
+                result[target_indicator] = result[target_indicator] * (
+                    1 + relative_change * sign * propagation_factor
                 )
 
         return result
@@ -557,12 +565,12 @@ class DigitalTwinSimulator:
         self, results: pd.DataFrame, year: int, indicator: str
     ) -> pd.DataFrame:
         """Get provincial rankings for an indicator in a specific year.
-        
+
         Args:
             results: Simulation results
             year: Year to rank
             indicator: Indicator to rank
-            
+
         Returns:
             DataFrame with rankings (area_code, value, rank)
         """
@@ -579,13 +587,13 @@ class DigitalTwinSimulator:
         end_year: Optional[int] = None,
     ) -> Dict[str, float]:
         """Analyze convergence/divergence of an indicator across provinces.
-        
+
         Args:
             results: Simulation results
             indicator: Indicator to analyze
             start_year: Starting year (if None, uses first year)
             end_year: Ending year (if None, uses last year)
-            
+
         Returns:
             Dictionary with convergence metrics
         """
@@ -593,13 +601,13 @@ class DigitalTwinSimulator:
             start_year = results["year"].min()
         if end_year is None:
             end_year = results["year"].max()
-        
+
         start_data = results[results["year"] == start_year][indicator]
         end_data = results[results["year"] == end_year][indicator]
-        
+
         if start_data.empty or end_data.empty:
             return {}
-        
+
         metrics = {
             "start_year": start_year,
             "end_year": end_year,
@@ -611,5 +619,5 @@ class DigitalTwinSimulator:
             "end_cv": float(end_data.std() / (end_data.mean() + 1e-6)),
             "convergence": start_data.std() > end_data.std(),
         }
-        
+
         return metrics

@@ -45,7 +45,9 @@ class PensionRetirementSpendingDownloader:
             json.dump(self.table_mapping, handle, indent=2, ensure_ascii=False)
         return mapping_path
 
-    def download_pension_retirement_spending(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
+    def download_pension_retirement_spending(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
         csv_data = self.client.get_data(
             flow_id=self.flow_id,
             key="",
@@ -66,7 +68,9 @@ class PensionRetirementSpendingDownloader:
 
         df_clean["year"] = df_clean["year"].astype(str).str[:4]
         df_clean["year"] = pd.to_numeric(df_clean["year"], errors="coerce")
-        df_clean["pension_retirement_spending"] = pd.to_numeric(df_clean["pension_retirement_spending"], errors="coerce")
+        df_clean["pension_retirement_spending"] = pd.to_numeric(
+            df_clean["pension_retirement_spending"], errors="coerce"
+        )
         df_clean = df_clean.dropna(subset=["year", "pension_retirement_spending"])
         df_clean = df_clean[(df_clean["year"] >= start_year) & (df_clean["year"] <= end_year)]
         df_clean = (
@@ -85,7 +89,9 @@ class PensionRetirementSpendingDownloader:
     ) -> Path:
         if output_path is None:
             indicator_dir = get_indicator_data_dir("pension_retirement_spending")
-            output_path = indicator_dir / f"pension_retirement_spending_raw_{start_year}_{end_year}.csv"
+            output_path = (
+                indicator_dir / f"pension_retirement_spending_raw_{start_year}_{end_year}.csv"
+            )
 
         print(f"Downloading pension retirement spending data ({start_year}-{end_year})...")
         df = self.download_pension_retirement_spending(start_year=start_year, end_year=end_year)

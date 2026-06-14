@@ -1,10 +1,11 @@
 """Utilities for the SERA Digital Twin."""
 
-import pandas as pd
-import numpy as np
-from typing import Dict, List, Tuple, Optional
-from pathlib import Path
 import json
+from pathlib import Path
+from typing import Dict, List, Tuple
+
+import numpy as np
+import pandas as pd
 
 
 class SimulationExporter:
@@ -13,7 +14,7 @@ class SimulationExporter:
     @staticmethod
     def to_json(results: pd.DataFrame, output_path: Path) -> None:
         """Export results to JSON.
-        
+
         Args:
             results: Simulation results DataFrame
             output_path: Output file path
@@ -38,7 +39,7 @@ class SimulationExporter:
     @staticmethod
     def to_excel(results: pd.DataFrame, output_path: Path) -> None:
         """Export results to Excel with multiple sheets.
-        
+
         Args:
             results: Simulation results DataFrame
             output_path: Output file path
@@ -46,11 +47,11 @@ class SimulationExporter:
         with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
             # All data
             results.to_excel(writer, sheet_name="All Data", index=False)
-            
+
             # Summary by year
             summary = results.groupby("year").describe().round(2)
             summary.to_excel(writer, sheet_name="Summary")
-            
+
             # Provincial profiles (one sheet per province, first few)
             for province in results["area_code"].unique()[:5]:
                 province_data = results[results["area_code"] == province]
@@ -67,12 +68,12 @@ class ScenarioBuilder:
         parameters: Dict[str, float],
     ) -> pd.DataFrame:
         """Create baseline scenario (unchanged parameters).
-        
+
         Args:
             provinces: List of province codes
             years: List of years to simulate
             parameters: Dict of parameter names and baseline values
-            
+
         Returns:
             DataFrame with baseline parameters
         """
@@ -90,20 +91,20 @@ class ScenarioBuilder:
         modifications: Dict[str, Tuple[int, float]],
     ) -> pd.DataFrame:
         """Create scenario variant by modifying parameters.
-        
+
         Args:
             baseline: Baseline scenario
             modifications: Dict of {param_name: (from_year, new_value)}
-            
+
         Returns:
             Modified scenario
         """
         variant = baseline.copy()
-        
+
         for param_name, (from_year, new_value) in modifications.items():
             mask = variant["year"] >= from_year
             variant.loc[mask, param_name] = new_value
-        
+
         return variant
 
     @staticmethod
@@ -114,25 +115,23 @@ class ScenarioBuilder:
         from_year: int,
     ) -> Dict[str, pd.DataFrame]:
         """Create multiple scenarios varying one parameter.
-        
+
         Args:
             baseline: Baseline scenario
             parameter: Parameter to vary
             values: List of values to try
             from_year: Year to start parameter changes
-            
+
         Returns:
             Dict mapping scenario names to scenario DataFrames
         """
         scenarios = {}
-        
+
         for value in values:
             scenario_name = f"{parameter}_{value}"
             modifications = {parameter: (from_year, value)}
-            scenarios[scenario_name] = ScenarioBuilder.create_variant(
-                baseline, modifications
-            )
-        
+            scenarios[scenario_name] = ScenarioBuilder.create_variant(baseline, modifications)
+
         return scenarios
 
 
@@ -147,30 +146,32 @@ class AnalysisTools:
         year: int,
     ) -> Dict[str, float]:
         """Compare results between two scenarios.
-        
+
         Args:
             baseline_results: Baseline simulation results
             variant_results: Variant simulation results
             indicator: Indicator to compare
             year: Year to compare
-            
+
         Returns:
             Dict with comparison metrics
         """
         base_year = baseline_results[baseline_results["year"] == year][indicator]
         var_year = variant_results[variant_results["year"] == year][indicator]
-        
+
         if base_year.empty or var_year.empty:
             return {}
-        
+
         base_mean = base_year.mean()
         var_mean = var_year.mean()
-        
+
         return {
             "baseline_mean": float(base_mean),
             "variant_mean": float(var_mean),
             "absolute_difference": float(var_mean - base_mean),
-            "percent_change": float(((var_mean - base_mean) / base_mean) * 100 if base_mean != 0 else 0),
+            "percent_change": float(
+                ((var_mean - base_mean) / base_mean) * 100 if base_mean != 0 else 0
+            ),
             "baseline_std": float(base_year.std()),
             "variant_std": float(var_year.std()),
             "std_change": float(var_year.std() - base_year.std()),
@@ -210,9 +211,7 @@ class AnalysisTools:
             metrics[f"{param}_after_mean"] = after_mean
             metrics[f"{param}_absolute_change"] = after_mean - before_mean
             metrics[f"{param}_percent_change"] = float(
-                (after_mean - before_mean) / abs(before_mean) * 100
-                if before_mean != 0
-                else 0.0
+                (after_mean - before_mean) / abs(before_mean) * 100 if before_mean != 0 else 0.0
             )
         return metrics
 
@@ -223,25 +222,27 @@ class AnalysisTools:
         year: int,
     ) -> Dict[str, float]:
         """Calculate inequality metrics for a provincial indicator.
-        
+
         Args:
             results: Simulation results
             indicator: Indicator to analyze
             year: Year to analyze
-            
+
         Returns:
             Dict with inequality metrics
         """
         year_data = results[results["year"] == year][indicator]
-        
+
         if year_data.empty:
             return {}
-        
+
         # Gini coefficient calculation
         sorted_vals = np.sort(year_data.values)
         n = len(sorted_vals)
-        gini = (2 * np.sum(np.arange(1, n + 1) * sorted_vals)) / (n * np.sum(sorted_vals)) - (n + 1) / n
-        
+        gini = (2 * np.sum(np.arange(1, n + 1) * sorted_vals)) / (n * np.sum(sorted_vals)) - (
+            n + 1
+        ) / n
+
         return {
             "mean": float(year_data.mean()),
             "std": float(year_data.std()),
@@ -260,7 +261,7 @@ class CausalPathTracer:
 
     def __init__(self, causal_graph: Dict[str, List[str]]):
         """Initialize tracer.
-        
+
         Args:
             causal_graph: Dict mapping indicators to dependent indicators
         """
@@ -272,27 +273,27 @@ class CausalPathTracer:
         max_depth: int = 3,
     ) -> Dict[str, int]:
         """Trace all indicators affected by a source indicator.
-        
+
         Args:
             source: Source indicator
             max_depth: Maximum depth to trace
-            
+
         Returns:
             Dict mapping affected indicators to distance from source
         """
         affected = {source: 0}
         to_visit = [(source, 1)]
-        
+
         while to_visit:
             current, depth = to_visit.pop(0)
-            
+
             if depth > max_depth:
                 continue
-            
+
             if current in self.causal_graph:
                 for dependent in self.causal_graph[current]:
                     if dependent not in affected:
                         affected[dependent] = depth
                         to_visit.append((dependent, depth + 1))
-        
+
         return affected

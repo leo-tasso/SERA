@@ -16,7 +16,9 @@ class HealthOutcomesDownloader:
     def __init__(self):
         self.country = "IT"
         self.indicator = "SP.DYN.IMRT.IN"
-        self.api_url = f"https://api.worldbank.org/v2/country/{self.country}/indicator/{self.indicator}"
+        self.api_url = (
+            f"https://api.worldbank.org/v2/country/{self.country}/indicator/{self.indicator}"
+        )
 
         self.table_mapping: dict[str, Any] = {
             "indicator": "health_outcomes",
@@ -45,7 +47,9 @@ class HealthOutcomesDownloader:
             json.dump(self.table_mapping, handle, indent=2, ensure_ascii=False)
         return mapping_path
 
-    def download_health_outcomes(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
+    def download_health_outcomes(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
         response = requests.get(
             self.api_url,
             params={"format": "json", "per_page": 200},
@@ -62,7 +66,9 @@ class HealthOutcomesDownloader:
         df_clean.columns = ["area_code", "year", "infant_mortality_per_1000"]
 
         df_clean["year"] = pd.to_numeric(df_clean["year"], errors="coerce")
-        df_clean["infant_mortality_per_1000"] = pd.to_numeric(df_clean["infant_mortality_per_1000"], errors="coerce")
+        df_clean["infant_mortality_per_1000"] = pd.to_numeric(
+            df_clean["infant_mortality_per_1000"], errors="coerce"
+        )
         df_clean = df_clean.dropna(subset=["year", "infant_mortality_per_1000"])
         df_clean = df_clean[(df_clean["year"] >= start_year) & (df_clean["year"] <= end_year)]
         df_clean = df_clean.sort_values("year")

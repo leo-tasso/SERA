@@ -1,14 +1,14 @@
 """Death rate downloader."""
 
+import io
 import json
 from pathlib import Path
 from typing import Any, Optional
 
 import pandas as pd
-import io
 
+from sera.config import CACHE_DIR, get_indicator_data_dir
 from sera.istat_client import IstatClient
-from sera.config import DATA_DIR, CACHE_DIR, get_indicator_data_dir
 
 
 class DeathRateDownloader:

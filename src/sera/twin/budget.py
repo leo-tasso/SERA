@@ -100,22 +100,14 @@ def budget_usage(
     total_used = 0.0
     for code, gdp in _gdp_by_province(current_state).items():
         prov = allocations.get(code, {})
-        revenue_ratio = (
-            sum(
-                float(prov.get(key, safe_baselines[key])) / safe_baselines[key]
-                for key in tax_keys
-            )
-            / max(len(tax_keys), 1)
-        )
+        revenue_ratio = sum(
+            float(prov.get(key, safe_baselines[key])) / safe_baselines[key] for key in tax_keys
+        ) / max(len(tax_keys), 1)
         base_pool += revenue_ratio * gdp * spending_intensity_pct / 100.0
 
-        cost_ratio = (
-            sum(
-                float(prov.get(key, safe_baselines[key])) / safe_baselines[key]
-                for key in spending_keys
-            )
-            / len(spending_keys)
-        )
+        cost_ratio = sum(
+            float(prov.get(key, safe_baselines[key])) / safe_baselines[key] for key in spending_keys
+        ) / len(spending_keys)
         total_used += cost_ratio * gdp * spending_intensity_pct / 100.0
 
     return total_used, base_pool
@@ -159,9 +151,7 @@ def make_constraint_fn(
         scaled = apply_budget_constraint(
             allocations, state, spending_intensity_pct, baselines, reserve
         )
-        total_used, base_pool = budget_usage(
-            allocations, state, spending_intensity_pct, baselines
-        )
+        total_used, base_pool = budget_usage(allocations, state, spending_intensity_pct, baselines)
         spent = min(total_used, base_pool + reserve)
         new_reserve = max(0.0, reserve + base_pool - spent)
         return scaled, new_reserve

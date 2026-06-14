@@ -45,7 +45,9 @@ class WaterQualityDownloader:
         return mapping_path
 
     def download_water_quality(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
-        csv_data = self.client.get_data(flow_id=self.flow_id, key="", start_year=start_year, end_year=end_year, format="csv")
+        csv_data = self.client.get_data(
+            flow_id=self.flow_id, key="", start_year=start_year, end_year=end_year, format="csv"
+        )
         df = pd.read_csv(io.StringIO(csv_data), low_memory=False)
         if df.empty:
             return pd.DataFrame(columns=["area_code", "year", "water_quality"])
@@ -57,7 +59,9 @@ class WaterQualityDownloader:
         df_clean = df_clean[(df_clean["year"] >= start_year) & (df_clean["year"] <= end_year)]
         return df_clean.sort_values(["area_code", "year"])
 
-    def save_water_quality_csv(self, output_path: Optional[Path] = None, start_year: int = 2001, end_year: int = 2025) -> Path:
+    def save_water_quality_csv(
+        self, output_path: Optional[Path] = None, start_year: int = 2001, end_year: int = 2025
+    ) -> Path:
         if output_path is None:
             indicator_dir = get_indicator_data_dir("water_quality")
             output_path = indicator_dir / f"water_quality_raw_{start_year}_{end_year}.csv"

@@ -47,31 +47,63 @@ class HomeownershipRateDownloader:
             json.dump(self.table_mapping, handle, indent=2, ensure_ascii=False)
         return mapping_path
 
-    def download_homeownership_rate(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
-        csv_data = self.client.get_data(flow_id=self.flow_id, key="", start_year=start_year, end_year=end_year, format="csv")
+    def download_homeownership_rate(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
+        csv_data = self.client.get_data(
+            flow_id=self.flow_id, key="", start_year=start_year, end_year=end_year, format="csv"
+        )
         df = pd.read_csv(io.StringIO(csv_data), low_memory=False)
 
         if df.empty:
-            return pd.DataFrame(columns=["area_code", "year", "owned_dwellings", "all_occupied_dwellings", "homeownership_rate"])
+            return pd.DataFrame(
+                columns=[
+                    "area_code",
+                    "year",
+                    "owned_dwellings",
+                    "all_occupied_dwellings",
+                    "homeownership_rate",
+                ]
+            )
 
         df["year"] = pd.to_numeric(df["TIME_PERIOD"], errors="coerce")
         df["OBS_VALUE"] = pd.to_numeric(df["OBS_VALUE"], errors="coerce")
         df = df.dropna(subset=["year", "OBS_VALUE"])
         df = df[(df["year"] >= start_year) & (df["year"] <= end_year)]
 
-        owned = df[(df["INDICATOR"].astype(str) == "NUM_OCC_DW_AV") & (df["OWNERSHIP_TYPE"].astype(str) == "OWN")]
-        total = df[(df["INDICATOR"].astype(str) == "NUM_OCC_DW_AV") & (df["OWNERSHIP_TYPE"].astype(str) == "ALL")]
+        owned = df[
+            (df["INDICATOR"].astype(str) == "NUM_OCC_DW_AV")
+            & (df["OWNERSHIP_TYPE"].astype(str) == "OWN")
+        ]
+        total = df[
+            (df["INDICATOR"].astype(str) == "NUM_OCC_DW_AV")
+            & (df["OWNERSHIP_TYPE"].astype(str) == "ALL")
+        ]
 
-        owned = owned[["REF_AREA", "year", "OBS_VALUE"]].copy().rename(columns={"REF_AREA": "area_code", "OBS_VALUE": "owned_dwellings"})
-        total = total[["REF_AREA", "year", "OBS_VALUE"]].copy().rename(columns={"REF_AREA": "area_code", "OBS_VALUE": "all_occupied_dwellings"})
+        owned = (
+            owned[["REF_AREA", "year", "OBS_VALUE"]]
+            .copy()
+            .rename(columns={"REF_AREA": "area_code", "OBS_VALUE": "owned_dwellings"})
+        )
+        total = (
+            total[["REF_AREA", "year", "OBS_VALUE"]]
+            .copy()
+            .rename(columns={"REF_AREA": "area_code", "OBS_VALUE": "all_occupied_dwellings"})
+        )
 
         merged = owned.merge(total, on=["area_code", "year"], how="inner")
         merged = merged[merged["all_occupied_dwellings"] > 0]
-        merged["homeownership_rate"] = (merged["owned_dwellings"] / merged["all_occupied_dwellings"]) * 100.0
-        merged = merged.sort_values(["area_code", "year"]).drop_duplicates(subset=["area_code", "year"])
+        merged["homeownership_rate"] = (
+            merged["owned_dwellings"] / merged["all_occupied_dwellings"]
+        ) * 100.0
+        merged = merged.sort_values(["area_code", "year"]).drop_duplicates(
+            subset=["area_code", "year"]
+        )
         return merged
 
-    def save_homeownership_rate_csv(self, output_path: Optional[Path] = None, start_year: int = 2001, end_year: int = 2025) -> Path:
+    def save_homeownership_rate_csv(
+        self, output_path: Optional[Path] = None, start_year: int = 2001, end_year: int = 2025
+    ) -> Path:
         if output_path is None:
             indicator_dir = get_indicator_data_dir("homeownership_rate")
             output_path = indicator_dir / f"homeownership_rate_raw_{start_year}_{end_year}.csv"

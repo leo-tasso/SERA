@@ -43,7 +43,12 @@ target-version = ["py311"]
 [tool.ruff]
 target-version = "py311"
 line-length = 100
+
+[tool.ruff.lint]
 select = ["E", "F", "W", "I"]
+# Black owns line wrapping; the residual long lines are strings/comments/URLs
+# that black intentionally leaves alone, so E501 would only fight the formatter.
+ignore = ["E501"]
 
 [tool.mypy]
 python_version = "3.11"

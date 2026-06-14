@@ -39,7 +39,9 @@ def test_national_only_csv_is_disaggregated(tmp_path):
     )
     loader = DataLoader(tmp_path)
     # No population file in tmp_path, but classification reads the raw codes only.
-    assert loader.classify_provenance("natl_ind", "economic") == DataLoader.PROVENANCE_DISAGG_NATIONAL
+    assert (
+        loader.classify_provenance("natl_ind", "economic") == DataLoader.PROVENANCE_DISAGG_NATIONAL
+    )
 
 
 def test_panel_provenance_labels_are_valid(tmp_path):

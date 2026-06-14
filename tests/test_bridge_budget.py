@@ -20,6 +20,7 @@ from backend_bridge import (  # noqa: E402
     format_label,
     parameter_limits,
 )
+
 from sera.twin.causal_graph import ANNUAL_PARAMETERS  # noqa: E402
 from sera.twin.province_mapping import PROVINCE_SIGLAS_110  # noqa: E402
 
@@ -103,9 +104,7 @@ class TestBudgetConstraint:
     def test_reserve_extends_the_pool(self):
         _used, pool = _budget_usage({}, make_state(), INTENSITY)
         allocations = allocations_scaled(2.0)  # needs 2x pool
-        scaled = _apply_budget_constraint(
-            allocations, make_state(), INTENSITY, reserve_pool=pool
-        )
+        scaled = _apply_budget_constraint(allocations, make_state(), INTENSITY, reserve_pool=pool)
         # base pool + an equal reserve covers the doubled spend exactly.
         assert scaled == allocations
 
@@ -171,5 +170,5 @@ class TestBridgeHelpers:
         assert err.startswith("@@PROGRESS@@")
         import json
 
-        payload = json.loads(err[len("@@PROGRESS@@"):])
+        payload = json.loads(err[len("@@PROGRESS@@") :])
         assert payload == {"percent": 100.0, "message": "almost done"}

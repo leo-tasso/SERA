@@ -16,7 +16,9 @@ class LocalGovernmentDebtDownloader:
     def __init__(self):
         self.country = "IT"
         self.indicator = "GC.DOD.TOTL.GD.ZS"
-        self.api_url = f"https://api.worldbank.org/v2/country/{self.country}/indicator/{self.indicator}"
+        self.api_url = (
+            f"https://api.worldbank.org/v2/country/{self.country}/indicator/{self.indicator}"
+        )
         self.table_mapping: dict[str, Any] = {
             "indicator": "local_government_debt",
             "source": {
@@ -46,8 +48,12 @@ class LocalGovernmentDebtDownloader:
             json.dump(self.table_mapping, handle, indent=2, ensure_ascii=False)
         return mapping_path
 
-    def download_local_government_debt(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
-        response = requests.get(self.api_url, params={"format": "json", "per_page": 1000}, timeout=120)
+    def download_local_government_debt(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
+        response = requests.get(
+            self.api_url, params={"format": "json", "per_page": 1000}, timeout=120
+        )
         response.raise_for_status()
         payload = response.json()
         if not isinstance(payload, list) or len(payload) < 2 or not isinstance(payload[1], list):
@@ -57,13 +63,17 @@ class LocalGovernmentDebtDownloader:
         df_clean = df[["countryiso3code", "date", "value"]].copy()
         df_clean.columns = ["area_code", "year", "local_government_debt_pct_gdp"]
         df_clean["year"] = pd.to_numeric(df_clean["year"], errors="coerce")
-        df_clean["local_government_debt_pct_gdp"] = pd.to_numeric(df_clean["local_government_debt_pct_gdp"], errors="coerce")
+        df_clean["local_government_debt_pct_gdp"] = pd.to_numeric(
+            df_clean["local_government_debt_pct_gdp"], errors="coerce"
+        )
         df_clean = df_clean.dropna(subset=["year", "local_government_debt_pct_gdp"])
         df_clean = df_clean[(df_clean["year"] >= start_year) & (df_clean["year"] <= end_year)]
         df_clean = df_clean.sort_values("year")
         return df_clean
 
-    def save_local_government_debt_csv(self, output_path: Optional[Path] = None, start_year: int = 2001, end_year: int = 2025) -> Path:
+    def save_local_government_debt_csv(
+        self, output_path: Optional[Path] = None, start_year: int = 2001, end_year: int = 2025
+    ) -> Path:
         if output_path is None:
             indicator_dir = get_indicator_data_dir("local_government_debt")
             output_path = indicator_dir / f"local_government_debt_raw_{start_year}_{end_year}.csv"
@@ -79,5 +89,7 @@ class LocalGovernmentDebtDownloader:
             print(f"  - Years: {int(df['year'].min())} to {int(df['year'].max())}")
             print(f"  - Unique areas: {df['area_code'].nunique()}")
         else:
-            print("  - No records in requested range (available World Bank coverage appears to be outside 2001-2025).")
+            print(
+                "  - No records in requested range (available World Bank coverage appears to be outside 2001-2025)."
+            )
         return output_path

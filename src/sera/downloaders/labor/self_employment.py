@@ -45,10 +45,12 @@ class SelfEmploymentDownloader:
             json.dump(self.table_mapping, handle, indent=2, ensure_ascii=False)
         return mapping_path
 
-    def download_self_employment(self, start_year: int = 2004, end_year: int = 2025) -> pd.DataFrame:
+    def download_self_employment(
+        self, start_year: int = 2004, end_year: int = 2025
+    ) -> pd.DataFrame:
         """Download self-employment share from ISTAT."""
         print(f"Fetching ISTAT employment by professional position from {self.flow_id}...")
-        
+
         # Fetch with no key to get all dimensions
         csv_data = self.client.get_data(
             flow_id=self.flow_id,
@@ -57,13 +59,13 @@ class SelfEmploymentDownloader:
             end_year=end_year,
             format="csv",
         )
-        
+
         if not csv_data or csv_data.strip() == "":
             print("Warning: No CSV data returned from ISTAT")
             return pd.DataFrame()
 
         df = pd.read_csv(io.StringIO(csv_data))
-        
+
         if df.empty or "OBS_VALUE" not in df.columns:
             return df
 
@@ -81,7 +83,7 @@ class SelfEmploymentDownloader:
             index=["REF_AREA", "TIME_PERIOD"],
             columns="POSIZ_PROF",
             values="OBS_VALUE",
-            aggfunc="first"
+            aggfunc="first",
         )
 
         if df_pivot.empty or 2 not in df_pivot.columns or 9 not in df_pivot.columns:
@@ -91,16 +93,22 @@ class SelfEmploymentDownloader:
         # Calculate self-employment share: self-employed / total
         df_result = df_pivot[[2, 9]].copy()
         df_result.columns = ["self_employed", "total_employed"]
-        df_result["self_employment_share"] = (df_result["self_employed"] / df_result["total_employed"] * 100).round(2)
-        
+        df_result["self_employment_share"] = (
+            df_result["self_employed"] / df_result["total_employed"] * 100
+        ).round(2)
+
         df_clean = df_result[["self_employment_share"]].reset_index()
         df_clean.columns = ["area_code", "year", "self_employment_share"]
 
         df_clean["year"] = pd.to_numeric(df_clean["year"], errors="coerce")
-        df_clean["self_employment_share"] = pd.to_numeric(df_clean["self_employment_share"], errors="coerce")
+        df_clean["self_employment_share"] = pd.to_numeric(
+            df_clean["self_employment_share"], errors="coerce"
+        )
         df_clean = df_clean.dropna(subset=["year", "self_employment_share"])
         df_clean = df_clean[(df_clean["year"] >= start_year) & (df_clean["year"] <= end_year)]
-        df_clean = df_clean.sort_values(["area_code", "year"]).drop_duplicates(subset=["area_code", "year"])
+        df_clean = df_clean.sort_values(["area_code", "year"]).drop_duplicates(
+            subset=["area_code", "year"]
+        )
 
         return df_clean
 

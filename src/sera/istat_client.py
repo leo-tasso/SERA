@@ -2,15 +2,15 @@
 
 import re
 import time
-from typing import Optional, Dict, Any
-from datetime import datetime
-import requests
 from pathlib import Path
+from typing import Optional
+
+import requests
 
 from sera.config import (
+    ENCODING,
     ISTAT_BASE_URL,
     ISTAT_MIN_DELAY_SECONDS,
-    ENCODING,
 )
 
 

@@ -3,96 +3,162 @@
 
 import argparse
 from pathlib import Path
-from sera.downloaders.demographic.population import PopulationDownloader
-from sera.downloaders.demographic.birth_rate import BirthRateDownloader
-from sera.downloaders.demographic.migration_flows import MigrationFlowsDownloader
+
+from sera.downloaders.annual_parameters.agriculture_support_level import (
+    AgricultureSupportLevelDownloader,
+)
+from sera.downloaders.annual_parameters.corporate_tax_rate import CorporateTaxRateDownloader
+from sera.downloaders.annual_parameters.education_spending_allocation import (
+    EducationSpendingAllocationDownloader,
+)
+from sera.downloaders.annual_parameters.environmental_regulations_strictness import (
+    EnvironmentalRegulationsStrictnessDownloader,
+)
+from sera.downloaders.annual_parameters.green_energy_environment_investment import (
+    GreenEnergyEnvironmentInvestmentDownloader,
+)
+from sera.downloaders.annual_parameters.healthcare_spending_allocation import (
+    HealthcareSpendingAllocationDownloader,
+)
+from sera.downloaders.annual_parameters.housing_urban_development_support import (
+    HousingUrbanDevelopmentSupportDownloader,
+)
+from sera.downloaders.annual_parameters.immigration_policy_level import (
+    ImmigrationPolicyLevelDownloader,
+)
+from sera.downloaders.annual_parameters.income_tax_rate import IncomeTaxRateDownloader
+from sera.downloaders.annual_parameters.infrastructure_investment_allocation import (
+    InfrastructureInvestmentAllocationDownloader,
+)
+from sera.downloaders.annual_parameters.manufacturing_incentives import (
+    ManufacturingIncentivesDownloader,
+)
+from sera.downloaders.annual_parameters.pension_retirement_spending import (
+    PensionRetirementSpendingDownloader,
+)
+from sera.downloaders.annual_parameters.property_wealth_tax_rate import (
+    PropertyWealthTaxRateDownloader,
+)
+from sera.downloaders.annual_parameters.public_sector_wage_levels import (
+    PublicSectorWageLevelsDownloader,
+)
+from sera.downloaders.annual_parameters.rd_innovation_incentives import (
+    RdInnovationIncentivesDownloader,
+)
+from sera.downloaders.annual_parameters.regulatory_burden_level import (
+    RegulatoryBurdenLevelDownloader,
+)
+from sera.downloaders.annual_parameters.small_business_support import SmallBusinessSupportDownloader
+from sera.downloaders.annual_parameters.social_welfare_spending_allocation import (
+    SocialWelfareSpendingAllocationDownloader,
+)
+from sera.downloaders.annual_parameters.tourism_support_level import TourismSupportLevelDownloader
+from sera.downloaders.annual_parameters.vat_consumption_tax_rate import (
+    VatConsumptionTaxRateDownloader,
+)
+from sera.downloaders.business_environment.agricultural_productivity import (
+    AgriculturalProductivityDownloader,
+)
 from sera.downloaders.demographic.age_distribution import AgeDistributionDownloader
+from sera.downloaders.demographic.birth_rate import BirthRateDownloader
 from sera.downloaders.demographic.death_rate import DeathRateDownloader
 from sera.downloaders.demographic.income import IncomeDownloader
-from sera.downloaders.economic.gdp_per_capita import GdpPerCapitaDownloader
-from sera.downloaders.economic.poverty_rate import PovertyRateDownloader
-from sera.downloaders.economic.gini_coefficient import GiniCoefficientDownloader
+from sera.downloaders.demographic.migration_flows import MigrationFlowsDownloader
+from sera.downloaders.demographic.population import PopulationDownloader
 from sera.downloaders.economic.business_density import BusinessDensityDownloader
-from sera.downloaders.economic.fdi import FdiDownloader
 from sera.downloaders.economic.exports_imports import ExportsImportsDownloader
-from sera.downloaders.labor.unemployment_rate import UnemploymentRateDownloader
-from sera.downloaders.labor.average_wages import AverageWagesDownloader
-from sera.downloaders.labor.youth_employment import YouthEmploymentDownloader
-from sera.downloaders.labor.self_employment import SelfEmploymentDownloader
-from sera.downloaders.labor.skills_match import SkillsMatchDownloader
-
-from sera.downloaders.annual_parameters.income_tax_rate import IncomeTaxRateDownloader
-from sera.downloaders.annual_parameters.corporate_tax_rate import CorporateTaxRateDownloader
-from sera.downloaders.annual_parameters.property_wealth_tax_rate import PropertyWealthTaxRateDownloader
-from sera.downloaders.annual_parameters.vat_consumption_tax_rate import VatConsumptionTaxRateDownloader
-from sera.downloaders.annual_parameters.healthcare_spending_allocation import HealthcareSpendingAllocationDownloader
-from sera.downloaders.annual_parameters.education_spending_allocation import EducationSpendingAllocationDownloader
-from sera.downloaders.annual_parameters.infrastructure_investment_allocation import InfrastructureInvestmentAllocationDownloader
-from sera.downloaders.annual_parameters.social_welfare_spending_allocation import SocialWelfareSpendingAllocationDownloader
-from sera.downloaders.annual_parameters.rd_innovation_incentives import RdInnovationIncentivesDownloader
-from sera.downloaders.annual_parameters.green_energy_environment_investment import GreenEnergyEnvironmentInvestmentDownloader
-from sera.downloaders.annual_parameters.agriculture_support_level import AgricultureSupportLevelDownloader
-from sera.downloaders.annual_parameters.manufacturing_incentives import ManufacturingIncentivesDownloader
-from sera.downloaders.annual_parameters.tourism_support_level import TourismSupportLevelDownloader
-from sera.downloaders.annual_parameters.small_business_support import SmallBusinessSupportDownloader
-from sera.downloaders.annual_parameters.immigration_policy_level import ImmigrationPolicyLevelDownloader
-from sera.downloaders.annual_parameters.regulatory_burden_level import RegulatoryBurdenLevelDownloader
-from sera.downloaders.annual_parameters.public_sector_wage_levels import PublicSectorWageLevelsDownloader
-from sera.downloaders.annual_parameters.pension_retirement_spending import PensionRetirementSpendingDownloader
-from sera.downloaders.annual_parameters.housing_urban_development_support import HousingUrbanDevelopmentSupportDownloader
-from sera.downloaders.annual_parameters.environmental_regulations_strictness import EnvironmentalRegulationsStrictnessDownloader
-
-from sera.downloaders.social_well_being.life_expectancy import LifeExpectancyDownloader
-from sera.downloaders.social_well_being.health_outcomes import HealthOutcomesDownloader
-from sera.downloaders.social_well_being.crime_rate import CrimeRateDownloader
-from sera.downloaders.social_well_being.social_cohesion import SocialCohesionDownloader
-from sera.downloaders.social_well_being.income_inequality import IncomeInequalityDownloader
-from sera.downloaders.education.school_enrollment import SchoolEnrollmentDownloader
-from sera.downloaders.education.completion_rates import CompletionRatesDownloader
-from sera.downloaders.education.stem_participation import StemParticipationDownloader
+from sera.downloaders.economic.fdi import FdiDownloader
+from sera.downloaders.economic.gdp_per_capita import GdpPerCapitaDownloader
+from sera.downloaders.economic.gini_coefficient import GiniCoefficientDownloader
+from sera.downloaders.economic.poverty_rate import PovertyRateDownloader
 from sera.downloaders.education.adult_learning import AdultLearningDownloader
-from sera.downloaders.innovation_infrastructure.r_and_d_spending import RAndDSpendingDownloader
-from sera.downloaders.innovation_infrastructure.patents import PatentsDownloader
-from sera.downloaders.innovation_infrastructure.startups import StartupsDownloader
-from sera.downloaders.innovation_infrastructure.digital_infrastructure import DigitalInfrastructureDownloader
-from sera.downloaders.innovation_infrastructure.transportation_access import TransportationAccessDownloader
-from sera.downloaders.environment.air_quality import AirQualityDownloader
-from sera.downloaders.environment.sustainability import SustainabilityDownloader
-from sera.downloaders.environment.green_space import GreenSpaceDownloader
-from sera.downloaders.public_finance.local_government_debt import LocalGovernmentDebtDownloader
-from sera.downloaders.public_finance.fiscal_balance import FiscalBalanceDownloader
-from sera.downloaders.public_finance.tax_revenue_per_capita import TaxRevenuePerCapitaDownloader
-from sera.downloaders.public_finance.public_spending_efficiency import PublicSpendingEfficiencyDownloader
-from sera.downloaders.public_finance.infrastructure_investment import InfrastructureInvestmentDownloader
-from sera.downloaders.housing.house_prices import HousePricesDownloader
-from sera.downloaders.housing.construction_activity import ConstructionActivityDownloader
-from sera.downloaders.housing.homeownership_rate import HomeownershipRateDownloader
-from sera.downloaders.housing.housing_affordability_ratio import HousingAffordabilityRatioDownloader
-from sera.downloaders.energy_resources.renewable_energy_percentage import RenewableEnergyPercentageDownloader
-from sera.downloaders.energy_resources.energy_consumption_per_capita import EnergyConsumptionPerCapitaDownloader
+from sera.downloaders.education.completion_rates import CompletionRatesDownloader
+from sera.downloaders.education.school_enrollment import SchoolEnrollmentDownloader
+from sera.downloaders.education.stem_participation import StemParticipationDownloader
 from sera.downloaders.energy_resources.carbon_emissions import CarbonEmissionsDownloader
 from sera.downloaders.energy_resources.electricity_prices import ElectricityPricesDownloader
-from sera.downloaders.transportation_mobility.public_transportation_usage import PublicTransportationUsageDownloader
-from sera.downloaders.transportation_mobility.car_ownership_density import CarOwnershipDensityDownloader
-from sera.downloaders.transportation_mobility.traffic_congestion import TrafficCongestionDownloader
-from sera.downloaders.transportation_mobility.broadband_penetration import BroadbandPenetrationDownloader
-from sera.downloaders.tourism_culture.tourist_arrivals import TouristArrivalsDownloader
-from sera.downloaders.tourism_culture.tourism_revenue import TourismRevenueDownloader
+from sera.downloaders.energy_resources.energy_consumption_per_capita import (
+    EnergyConsumptionPerCapitaDownloader,
+)
+from sera.downloaders.energy_resources.renewable_energy_percentage import (
+    RenewableEnergyPercentageDownloader,
+)
+from sera.downloaders.environment.air_quality import AirQualityDownloader
+from sera.downloaders.environment.green_space import GreenSpaceDownloader
+from sera.downloaders.environment.sustainability import SustainabilityDownloader
+from sera.downloaders.environmental_quality.air_pollution import AirPollutionDownloader
+from sera.downloaders.environmental_quality.green_urban_space_per_capita import (
+    GreenUrbanSpacePerCapitaDownloader,
+)
+from sera.downloaders.environmental_quality.waste_recycling_rate import WasteRecyclingRateDownloader
+from sera.downloaders.environmental_quality.water_quality import WaterQualityDownloader
+from sera.downloaders.healthcare_public_services.healthcare_spending_per_capita import (
+    HealthcareSpendingPerCapitaDownloader,
+)
+from sera.downloaders.healthcare_public_services.healthcare_worker_density import (
+    HealthcareWorkerDensityDownloader,
+)
+from sera.downloaders.healthcare_public_services.hospital_beds_available import (
+    HospitalBedsAvailableDownloader,
+)
+from sera.downloaders.healthcare_public_services.preventive_care_coverage import (
+    PreventiveCareCoverageDownloader,
+)
+from sera.downloaders.housing.construction_activity import ConstructionActivityDownloader
+from sera.downloaders.housing.homeownership_rate import HomeownershipRateDownloader
+from sera.downloaders.housing.house_prices import HousePricesDownloader
+from sera.downloaders.housing.housing_affordability_ratio import HousingAffordabilityRatioDownloader
+from sera.downloaders.innovation_infrastructure.digital_infrastructure import (
+    DigitalInfrastructureDownloader,
+)
+from sera.downloaders.innovation_infrastructure.patents import PatentsDownloader
+from sera.downloaders.innovation_infrastructure.r_and_d_spending import RAndDSpendingDownloader
+from sera.downloaders.innovation_infrastructure.startups import StartupsDownloader
+from sera.downloaders.innovation_infrastructure.transportation_access import (
+    TransportationAccessDownloader,
+)
+from sera.downloaders.labor.average_wages import AverageWagesDownloader
+from sera.downloaders.labor.self_employment import SelfEmploymentDownloader
+from sera.downloaders.labor.skills_match import SkillsMatchDownloader
+from sera.downloaders.labor.unemployment_rate import UnemploymentRateDownloader
+from sera.downloaders.labor.youth_employment import YouthEmploymentDownloader
+from sera.downloaders.public_finance.fiscal_balance import FiscalBalanceDownloader
+from sera.downloaders.public_finance.infrastructure_investment import (
+    InfrastructureInvestmentDownloader,
+)
+from sera.downloaders.public_finance.local_government_debt import LocalGovernmentDebtDownloader
+from sera.downloaders.public_finance.public_spending_efficiency import (
+    PublicSpendingEfficiencyDownloader,
+)
+from sera.downloaders.public_finance.tax_revenue_per_capita import TaxRevenuePerCapitaDownloader
+from sera.downloaders.resilience_risk.healthcare_capacity import HealthcareCapacityDownloader
+from sera.downloaders.service_accessibility.healthcare_facility_density import (
+    HealthcareFacilityDensityDownloader,
+)
+from sera.downloaders.social_well_being.crime_rate import CrimeRateDownloader
+from sera.downloaders.social_well_being.health_outcomes import HealthOutcomesDownloader
+from sera.downloaders.social_well_being.income_inequality import IncomeInequalityDownloader
+from sera.downloaders.social_well_being.life_expectancy import LifeExpectancyDownloader
+from sera.downloaders.social_well_being.social_cohesion import SocialCohesionDownloader
 from sera.downloaders.tourism_culture.cultural_sites import CulturalSitesDownloader
 from sera.downloaders.tourism_culture.cultural_spending import CulturalSpendingDownloader
 from sera.downloaders.tourism_culture.museums_events import MuseumsEventsDownloader
-from sera.downloaders.healthcare_public_services.healthcare_spending_per_capita import HealthcareSpendingPerCapitaDownloader
-from sera.downloaders.healthcare_public_services.hospital_beds_available import HospitalBedsAvailableDownloader
-from sera.downloaders.healthcare_public_services.healthcare_worker_density import HealthcareWorkerDensityDownloader
-from sera.downloaders.healthcare_public_services.preventive_care_coverage import PreventiveCareCoverageDownloader
-from sera.downloaders.business_environment.agricultural_productivity import AgriculturalProductivityDownloader
-from sera.downloaders.environmental_quality.waste_recycling_rate import WasteRecyclingRateDownloader
-from sera.downloaders.environmental_quality.water_quality import WaterQualityDownloader
-from sera.downloaders.environmental_quality.air_pollution import AirPollutionDownloader
-from sera.downloaders.environmental_quality.green_urban_space_per_capita import GreenUrbanSpacePerCapitaDownloader
-from sera.downloaders.resilience_risk.healthcare_capacity import HealthcareCapacityDownloader
-from sera.downloaders.service_accessibility.healthcare_facility_density import HealthcareFacilityDensityDownloader
-from sera.downloaders.urban_rural.urban_population_percentage import UrbanPopulationPercentageDownloader
+from sera.downloaders.tourism_culture.tourism_revenue import TourismRevenueDownloader
+from sera.downloaders.tourism_culture.tourist_arrivals import TouristArrivalsDownloader
+from sera.downloaders.transportation_mobility.broadband_penetration import (
+    BroadbandPenetrationDownloader,
+)
+from sera.downloaders.transportation_mobility.car_ownership_density import (
+    CarOwnershipDensityDownloader,
+)
+from sera.downloaders.transportation_mobility.public_transportation_usage import (
+    PublicTransportationUsageDownloader,
+)
+from sera.downloaders.transportation_mobility.traffic_congestion import TrafficCongestionDownloader
+from sera.downloaders.urban_rural.urban_population_percentage import (
+    UrbanPopulationPercentageDownloader,
+)
+
 
 def main():
     """Main downloader orchestrator."""
@@ -660,7 +726,9 @@ def main():
 
     if args.indicator == "all":
         if args.output is not None:
-            parser.error("--output cannot be used with --indicator all because each indicator writes to its own default file")
+            parser.error(
+                "--output cannot be used with --indicator all because each indicator writes to its own default file"
+            )
 
         for indicator_name, runner in indicator_runners.items():
             print(f"\n=== Downloading {indicator_name} ===")

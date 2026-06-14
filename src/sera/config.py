@@ -1,6 +1,5 @@
 """Configuration and constants for SERA downloader."""
 
-import os
 from pathlib import Path
 from typing import Final
 
@@ -134,13 +133,13 @@ def get_indicator_data_dir(
     indicator: str,
 ) -> Path:
     """Get the data directory for a specific indicator.
-    
+
     Args:
         indicator: Indicator name (e.g., 'population')
-    
+
     Returns:
         Path to indicator-specific directory.
-    
+
     Example:
         get_indicator_data_dir('population')
         # Returns: data/demographic/population/

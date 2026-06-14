@@ -17,7 +17,7 @@ class CompletionRatesDownloader:
     def __init__(self):
         self.client = IstatClient()
         self.enrollment_flow_id = "52_1044_DF_DCIS_SCUOLE_11"  # Upper-secondary enrolled students
-        self.graduates_flow_id = "52_1044_DF_DCIS_SCUOLE_14"   # Upper-secondary graduates
+        self.graduates_flow_id = "52_1044_DF_DCIS_SCUOLE_14"  # Upper-secondary graduates
 
         self.table_mapping: dict[str, Any] = {
             "indicator": "completion_rates",
@@ -86,7 +86,9 @@ class CompletionRatesDownloader:
 
         return df_clean
 
-    def download_completion_rates(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
+    def download_completion_rates(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
         """Download completion rates with best available ISTAT geographic granularity."""
         print("Fetching ISTAT completion rates data...")
 
@@ -100,7 +102,9 @@ class CompletionRatesDownloader:
         )
 
         if enrollment.empty or graduates.empty:
-            return pd.DataFrame(columns=["area_code", "year", "enrolled_students", "graduates", "completion_rate"])
+            return pd.DataFrame(
+                columns=["area_code", "year", "enrolled_students", "graduates", "completion_rate"]
+            )
 
         enrollment = enrollment.rename(columns={"value": "enrolled_students"})
         graduates = graduates.rename(columns={"value": "graduates"})
@@ -110,7 +114,9 @@ class CompletionRatesDownloader:
         merged = merged[merged["enrolled_students"] > 0]
         merged["completion_rate"] = (merged["graduates"] / merged["enrolled_students"]) * 100.0
 
-        merged = merged.sort_values(["area_code", "year"]).drop_duplicates(subset=["area_code", "year"])
+        merged = merged.sort_values(["area_code", "year"]).drop_duplicates(
+            subset=["area_code", "year"]
+        )
 
         return merged
 

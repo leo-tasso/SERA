@@ -1,14 +1,14 @@
 """Migration flows indicator downloader."""
 
+import io
 import json
 from pathlib import Path
 from typing import Any, Optional
 
 import pandas as pd
-import io
 
+from sera.config import CACHE_DIR, get_indicator_data_dir
 from sera.istat_client import IstatClient
-from sera.config import DATA_DIR, CACHE_DIR, get_indicator_data_dir
 
 
 class MigrationFlowsDownloader:
@@ -59,8 +59,8 @@ class MigrationFlowsDownloader:
     ) -> pd.DataFrame:
         """Download migration flows data.
 
-        Note: ISTAT migration data (28_185_DF_DCIS_MIGRAZIONI_1 dataflow) is available 
-        at national level (IT) and regional level. This implementation retrieves national 
+        Note: ISTAT migration data (28_185_DF_DCIS_MIGRAZIONI_1 dataflow) is available
+        at national level (IT) and regional level. This implementation retrieves national
         aggregate data.
 
         Args:
@@ -97,9 +97,7 @@ class MigrationFlowsDownloader:
         df = pd.read_csv(io.StringIO(csv_data))
 
         # Keep only essential columns and rename
-        df_clean = df[[
-            "REF_AREA", "FREQ", "TIME_PERIOD", "OBS_VALUE"
-        ]].copy()
+        df_clean = df[["REF_AREA", "FREQ", "TIME_PERIOD", "OBS_VALUE"]].copy()
 
         rename_map = {
             "REF_AREA": "area_code",

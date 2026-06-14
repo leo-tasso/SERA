@@ -2,7 +2,6 @@
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from sera.twin.pareto import (
     crowding_distance,
@@ -138,7 +137,10 @@ class TestNsga2Front:
         env = make_env()
         calls = []
         nsga2_front(
-            env, popsize=6, generations=2, seed=0,
+            env,
+            popsize=6,
+            generations=2,
+            seed=0,
             progress=lambda gen, total, evals: calls.append(gen),
         )
         assert calls == [0, 1, 2]

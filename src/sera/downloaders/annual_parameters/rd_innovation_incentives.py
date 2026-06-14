@@ -16,7 +16,9 @@ class RdInnovationIncentivesDownloader:
     def __init__(self):
         self.country = "IT"
         self.indicator = "GB.XPD.RSDV.GD.ZS"
-        self.api_url = f"https://api.worldbank.org/v2/country/{self.country}/indicator/{self.indicator}"
+        self.api_url = (
+            f"https://api.worldbank.org/v2/country/{self.country}/indicator/{self.indicator}"
+        )
 
         self.table_mapping: dict[str, Any] = {
             "parameter": "rd_innovation_incentives",
@@ -46,7 +48,9 @@ class RdInnovationIncentivesDownloader:
             json.dump(self.table_mapping, handle, indent=2, ensure_ascii=False)
         return mapping_path
 
-    def download_rd_innovation_incentives(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
+    def download_rd_innovation_incentives(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
         response = requests.get(
             self.api_url,
             params={"format": "json", "per_page": 1000},
@@ -56,14 +60,18 @@ class RdInnovationIncentivesDownloader:
         payload = response.json()
 
         if not isinstance(payload, list) or len(payload) < 2 or not isinstance(payload[1], list):
-            raise RuntimeError("Unexpected World Bank response format for rd_innovation_incentives.")
+            raise RuntimeError(
+                "Unexpected World Bank response format for rd_innovation_incentives."
+            )
 
         df = pd.DataFrame(payload[1])
         df_clean = df[["countryiso3code", "date", "value"]].copy()
         df_clean.columns = ["area_code", "year", "rd_innovation_incentives"]
 
         df_clean["year"] = pd.to_numeric(df_clean["year"], errors="coerce")
-        df_clean["rd_innovation_incentives"] = pd.to_numeric(df_clean["rd_innovation_incentives"], errors="coerce")
+        df_clean["rd_innovation_incentives"] = pd.to_numeric(
+            df_clean["rd_innovation_incentives"], errors="coerce"
+        )
         df_clean = df_clean.dropna(subset=["year", "rd_innovation_incentives"])
         df_clean = df_clean[(df_clean["year"] >= start_year) & (df_clean["year"] <= end_year)]
         df_clean = df_clean.sort_values("year")
@@ -78,7 +86,9 @@ class RdInnovationIncentivesDownloader:
     ) -> Path:
         if output_path is None:
             indicator_dir = get_indicator_data_dir("rd_innovation_incentives")
-            output_path = indicator_dir / f"rd_innovation_incentives_raw_{start_year}_{end_year}.csv"
+            output_path = (
+                indicator_dir / f"rd_innovation_incentives_raw_{start_year}_{end_year}.csv"
+            )
 
         print(f"Downloading rd innovation incentives proxy data ({start_year}-{end_year})...")
         df = self.download_rd_innovation_incentives(start_year=start_year, end_year=end_year)

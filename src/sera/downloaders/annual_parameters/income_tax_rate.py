@@ -16,7 +16,9 @@ class IncomeTaxRateDownloader:
     def __init__(self):
         self.country = "IT"
         self.indicator = "GC.TAX.YPKG.RV.ZS"
-        self.api_url = f"https://api.worldbank.org/v2/country/{self.country}/indicator/{self.indicator}"
+        self.api_url = (
+            f"https://api.worldbank.org/v2/country/{self.country}/indicator/{self.indicator}"
+        )
 
         self.table_mapping: dict[str, Any] = {
             "parameter": "income_tax_rate",
@@ -46,7 +48,9 @@ class IncomeTaxRateDownloader:
             json.dump(self.table_mapping, handle, indent=2, ensure_ascii=False)
         return mapping_path
 
-    def download_income_tax_rate(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
+    def download_income_tax_rate(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
         response = requests.get(
             self.api_url,
             params={"format": "json", "per_page": 1000},

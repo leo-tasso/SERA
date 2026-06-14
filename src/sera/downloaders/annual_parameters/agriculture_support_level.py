@@ -45,7 +45,9 @@ class AgricultureSupportLevelDownloader:
             json.dump(self.table_mapping, handle, indent=2, ensure_ascii=False)
         return mapping_path
 
-    def download_agriculture_support_level(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
+    def download_agriculture_support_level(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
         csv_data = self.client.get_data(
             flow_id=self.flow_id,
             key="",
@@ -66,7 +68,9 @@ class AgricultureSupportLevelDownloader:
 
         df_clean["year"] = df_clean["year"].astype(str).str[:4]
         df_clean["year"] = pd.to_numeric(df_clean["year"], errors="coerce")
-        df_clean["agriculture_support_level"] = pd.to_numeric(df_clean["agriculture_support_level"], errors="coerce")
+        df_clean["agriculture_support_level"] = pd.to_numeric(
+            df_clean["agriculture_support_level"], errors="coerce"
+        )
         df_clean = df_clean.dropna(subset=["year", "agriculture_support_level"])
         df_clean = df_clean[(df_clean["year"] >= start_year) & (df_clean["year"] <= end_year)]
         df_clean = (
@@ -85,7 +89,9 @@ class AgricultureSupportLevelDownloader:
     ) -> Path:
         if output_path is None:
             indicator_dir = get_indicator_data_dir("agriculture_support_level")
-            output_path = indicator_dir / f"agriculture_support_level_raw_{start_year}_{end_year}.csv"
+            output_path = (
+                indicator_dir / f"agriculture_support_level_raw_{start_year}_{end_year}.csv"
+            )
 
         print(f"Downloading agriculture support level data ({start_year}-{end_year})...")
         df = self.download_agriculture_support_level(start_year=start_year, end_year=end_year)

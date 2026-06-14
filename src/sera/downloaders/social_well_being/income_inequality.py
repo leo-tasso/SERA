@@ -47,7 +47,9 @@ class IncomeInequalityDownloader:
             json.dump(self.table_mapping, handle, indent=2, ensure_ascii=False)
         return mapping_path
 
-    def download_income_inequality(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
+    def download_income_inequality(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
         csv_data = self.client.get_data(
             flow_id=self.dataflow_id,
             key=self.key,
@@ -57,7 +59,17 @@ class IncomeInequalityDownloader:
         )
 
         df = pd.read_csv(io.StringIO(csv_data))
-        df_clean = df[["REF_AREA", "FREQ", "TIME_PERIOD", "OBS_VALUE", "DATA_TYPE", "MEASURE", "IMPUTED_RENTS"]].copy()
+        df_clean = df[
+            [
+                "REF_AREA",
+                "FREQ",
+                "TIME_PERIOD",
+                "OBS_VALUE",
+                "DATA_TYPE",
+                "MEASURE",
+                "IMPUTED_RENTS",
+            ]
+        ].copy()
         df_clean.columns = [
             "area_code",
             "frequency",
@@ -76,7 +88,9 @@ class IncomeInequalityDownloader:
         ].copy()
 
         df_clean["year"] = pd.to_numeric(df_clean["year"], errors="coerce")
-        df_clean["income_inequality"] = pd.to_numeric(df_clean["income_inequality"], errors="coerce")
+        df_clean["income_inequality"] = pd.to_numeric(
+            df_clean["income_inequality"], errors="coerce"
+        )
         df_clean = df_clean.dropna(subset=["year", "income_inequality"])
 
         return df_clean

@@ -1,16 +1,14 @@
 """Tests for the SERA Digital Twin module."""
 
-import pytest
-import pandas as pd
 import numpy as np
-from pathlib import Path
-import tempfile
+import pandas as pd
+import pytest
 
 from sera.twin.causal_graph import (
-    get_affected_indicators,
-    get_influencing_parameters,
-    get_dependent_indicators,
     PARAMETER_EFFECT_DIRECTION,
+    get_affected_indicators,
+    get_dependent_indicators,
+    get_influencing_parameters,
     get_parameter_reference,
     get_parameter_signal,
 )
@@ -123,23 +121,25 @@ class TestModelTrainer:
     def test_prepare_feature_matrix(self):
         """Test feature matrix preparation."""
         # Create synthetic data
-        indicators_df = pd.DataFrame({
-            "area_code": ["IT001", "IT002"] * 5,
-            "year": list(range(2020, 2025)) * 2,
-            "income": np.random.randn(10),
-            "employment": np.random.randn(10),
-        })
+        indicators_df = pd.DataFrame(
+            {
+                "area_code": ["IT001", "IT002"] * 5,
+                "year": list(range(2020, 2025)) * 2,
+                "income": np.random.randn(10),
+                "employment": np.random.randn(10),
+            }
+        )
 
-        parameters_df = pd.DataFrame({
-            "area_code": ["IT001", "IT002"] * 5,
-            "year": list(range(2020, 2025)) * 2,
-            "income_tax_rate": np.random.rand(10) * 100,
-        })
+        parameters_df = pd.DataFrame(
+            {
+                "area_code": ["IT001", "IT002"] * 5,
+                "year": list(range(2020, 2025)) * 2,
+                "income_tax_rate": np.random.rand(10) * 100,
+            }
+        )
 
         trainer = ModelTrainer()
-        X, y, feature_names = trainer.prepare_feature_matrix(
-            "income", indicators_df, parameters_df
-        )
+        X, y, feature_names = trainer.prepare_feature_matrix("income", indicators_df, parameters_df)
 
         if len(X) > 0:
             assert X.shape[1] == len(feature_names)
@@ -190,11 +190,13 @@ class TestSimulator:
             parameters=[],
         )
 
-        df = pd.DataFrame({
-            "area_code": ["IT001"],
-            "year": [2026],
-            "life_expectancy": [160],  # Should be bounded to 150
-        })
+        df = pd.DataFrame(
+            {
+                "area_code": ["IT001"],
+                "year": [2026],
+                "life_expectancy": [160],  # Should be bounded to 150
+            }
+        )
 
         result = simulator._apply_bounds(df)
         assert result["life_expectancy"].iloc[0] <= 150
@@ -208,23 +210,29 @@ class TestSimulator:
             parameters=["income_tax_rate"],
         )
 
-        predictions = pd.DataFrame({
-            "area_code": ["IT001"],
-            "income": [50000],
-        })
+        predictions = pd.DataFrame(
+            {
+                "area_code": ["IT001"],
+                "income": [50000],
+            }
+        )
 
         # A tax rate well above the historical baseline should decrease income.
         # Derive it from the reference so the test does not depend on the
         # absolute scale of the data files.
         baseline, scale = get_parameter_reference("income_tax_rate")
-        parameters = pd.DataFrame({
-            "area_code": ["IT001"],
-            "income_tax_rate": [baseline + 2 * scale],
-        })
+        parameters = pd.DataFrame(
+            {
+                "area_code": ["IT001"],
+                "income_tax_rate": [baseline + 2 * scale],
+            }
+        )
 
-        lagged = pd.DataFrame({
-            "income_lag1": [50000],
-        })
+        lagged = pd.DataFrame(
+            {
+                "income_lag1": [50000],
+            }
+        )
 
         result = simulator._apply_causal_rules(predictions, parameters, lagged)
         # Higher income tax should decrease income
@@ -272,16 +280,20 @@ class TestSimulator:
             parameters=[],
         )
 
-        current_state = pd.DataFrame({
-            "area_code": ["IT001"],
-            "year": [2025],
-            "income": [100.0],
-            "poverty_rate": [99.0],
-        })
-        parameters_year = pd.DataFrame({
-            "area_code": ["IT001"],
-            "year": [2026],
-        })
+        current_state = pd.DataFrame(
+            {
+                "area_code": ["IT001"],
+                "year": [2025],
+                "income": [100.0],
+                "poverty_rate": [99.0],
+            }
+        )
+        parameters_year = pd.DataFrame(
+            {
+                "area_code": ["IT001"],
+                "year": [2026],
+            }
+        )
 
         result = simulator.simulate_year(current_state, parameters_year)
 
@@ -302,21 +314,25 @@ class TestParameterAlignment:
 
     @staticmethod
     def _make_state():
-        return pd.DataFrame({
-            "area_code": ["AA", "BB", "CC"],
-            "year": [2025] * 3,
-            "income": [100.0, 200.0, 300.0],
-        })
+        return pd.DataFrame(
+            {
+                "area_code": ["AA", "BB", "CC"],
+                "year": [2025] * 3,
+                "income": [100.0, 200.0, 300.0],
+            }
+        )
 
     def test_shuffled_parameter_rows_give_identical_results(self):
         simulator = self._make_simulator()
         baseline, scale = get_parameter_reference("income_tax_rate")
 
-        ordered = pd.DataFrame({
-            "area_code": ["AA", "BB", "CC"],
-            "year": [2026] * 3,
-            "income_tax_rate": [baseline, baseline + 2 * scale, baseline],
-        })
+        ordered = pd.DataFrame(
+            {
+                "area_code": ["AA", "BB", "CC"],
+                "year": [2026] * 3,
+                "income_tax_rate": [baseline, baseline + 2 * scale, baseline],
+            }
+        )
         shuffled = ordered.iloc[[2, 0, 1]].reset_index(drop=True)
 
         result_ordered = simulator.simulate_year(self._make_state(), ordered)
@@ -328,11 +344,13 @@ class TestParameterAlignment:
         simulator = self._make_simulator()
         baseline, _scale = get_parameter_reference("income_tax_rate")
 
-        explicit_baseline = pd.DataFrame({
-            "area_code": ["AA", "BB", "CC"],
-            "year": [2026] * 3,
-            "income_tax_rate": [baseline] * 3,
-        })
+        explicit_baseline = pd.DataFrame(
+            {
+                "area_code": ["AA", "BB", "CC"],
+                "year": [2026] * 3,
+                "income_tax_rate": [baseline] * 3,
+            }
+        )
         missing_bb = explicit_baseline[explicit_baseline["area_code"] != "BB"].copy()
 
         result_full = simulator.simulate_year(self._make_state(), explicit_baseline)
@@ -356,24 +374,28 @@ class TestIntegration:
 
         for year in range(2001, 2001 + n_years):
             for prov in ["IT001", "IT002", "IT003"]:
-                indicators_data.append({
-                    "area_code": prov,
-                    "year": year,
-                    "income": 30000 + np.random.randn() * 5000,
-                    "unemployment_rate": 8 + np.random.randn() * 2,
-                })
-                parameters_data.append({
-                    "area_code": prov,
-                    "year": year,
-                    "income_tax_rate": 30 + np.random.randn() * 5,
-                })
+                indicators_data.append(
+                    {
+                        "area_code": prov,
+                        "year": year,
+                        "income": 30000 + np.random.randn() * 5000,
+                        "unemployment_rate": 8 + np.random.randn() * 2,
+                    }
+                )
+                parameters_data.append(
+                    {
+                        "area_code": prov,
+                        "year": year,
+                        "income_tax_rate": 30 + np.random.randn() * 5,
+                    }
+                )
 
         indicators_df = pd.DataFrame(indicators_data)
         parameters_df = pd.DataFrame(parameters_data)
 
         # Train
         trainer = ModelTrainer(model_type="ridge")
-        metrics = trainer.train_all_indicators(indicators_df, parameters_df)
+        trainer.train_all_indicators(indicators_df, parameters_df)
 
         assert len(trainer.models) > 0
 

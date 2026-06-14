@@ -16,7 +16,7 @@ lever table.
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List
 
 import numpy as np
 
@@ -56,10 +56,7 @@ def _final_year_metrics(env, trajectory, reserve: float) -> dict:
 def _baseline_unit(env) -> np.ndarray:
     """The historical baseline lever vector, normalised into the ``[0, 1]`` box."""
     return np.array(
-        [
-            (spec.baseline - spec.min) / max(spec.max - spec.min, 1e-9)
-            for spec in env.param_specs
-        ],
+        [(spec.baseline - spec.min) / max(spec.max - spec.min, 1e-9) for spec in env.param_specs],
         dtype=float,
     ).clip(0.0, 1.0)
 
@@ -77,9 +74,7 @@ def evaluate_levers(env, x: np.ndarray) -> dict:
 
 def _maximization_matrix(metrics: List[dict]) -> np.ndarray:
     """Metrics as a maximisation matrix: [gdp_total, -gini, worst_gdp]."""
-    return np.array(
-        [[m["gdp_total"], -m["gini"], m["worst_gdp"]] for m in metrics], dtype=float
-    )
+    return np.array([[m["gdp_total"], -m["gini"], m["worst_gdp"]] for m in metrics], dtype=float)
 
 
 def dominates(a: np.ndarray, b: np.ndarray) -> bool:
@@ -133,9 +128,7 @@ def crowding_distance(F: np.ndarray, front: List[int]) -> np.ndarray:
         if span <= 0:
             continue
         for pos in range(1, size - 1):
-            distance[order[pos]] += (
-                sub[order[pos + 1], col] - sub[order[pos - 1], col]
-            ) / span
+            distance[order[pos]] += (sub[order[pos + 1], col] - sub[order[pos - 1], col]) / span
     return distance
 
 
@@ -190,8 +183,7 @@ def _cluster_evaluator(env, n_clusters: int, seed: int):
                 "id": c,
                 "provinces": member_counts[c],
                 "levers": {
-                    spec.key: float(values[c, col])
-                    for col, spec in enumerate(env.param_specs)
+                    spec.key: float(values[c, col]) for col, spec in enumerate(env.param_specs)
                 },
             }
             for c in range(k)

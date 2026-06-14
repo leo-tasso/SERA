@@ -47,7 +47,9 @@ class TransportationAccessDownloader:
             json.dump(self.table_mapping, handle, indent=2, ensure_ascii=False)
         return mapping_path
 
-    def download_transportation_access(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
+    def download_transportation_access(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
         csv_data = self.client.get_data(
             flow_id=self.flow_id,
             key="",
@@ -68,10 +70,14 @@ class TransportationAccessDownloader:
         df_clean = df[["REF_AREA", "TIME_PERIOD", "OBS_VALUE"]].copy()
         df_clean.columns = ["area_code", "year", "public_transport_access_value"]
         df_clean["year"] = pd.to_numeric(df_clean["year"], errors="coerce")
-        df_clean["public_transport_access_value"] = pd.to_numeric(df_clean["public_transport_access_value"], errors="coerce")
+        df_clean["public_transport_access_value"] = pd.to_numeric(
+            df_clean["public_transport_access_value"], errors="coerce"
+        )
         df_clean = df_clean.dropna(subset=["year", "public_transport_access_value"])
         df_clean = df_clean[(df_clean["year"] >= start_year) & (df_clean["year"] <= end_year)]
-        df_clean = df_clean.sort_values(["area_code", "year"]).drop_duplicates(subset=["area_code", "year"])
+        df_clean = df_clean.sort_values(["area_code", "year"]).drop_duplicates(
+            subset=["area_code", "year"]
+        )
         return df_clean
 
     def save_transportation_access_csv(

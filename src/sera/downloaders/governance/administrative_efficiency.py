@@ -45,7 +45,9 @@ class AdministrativeEfficiencyDownloader:
             json.dump(self.table_mapping, handle, indent=2, ensure_ascii=False)
         return mapping_path
 
-    def download_administrative_efficiency(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
+    def download_administrative_efficiency(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
         url = f"{self.base_url}?format=json&per_page=500"
         try:
             response = requests.get(url, timeout=10)
@@ -86,7 +88,9 @@ class AdministrativeEfficiencyDownloader:
     ) -> Path:
         if output_path is None:
             indicator_dir = get_indicator_data_dir("administrative_efficiency")
-            output_path = indicator_dir / f"administrative_efficiency_raw_{start_year}_{end_year}.csv"
+            output_path = (
+                indicator_dir / f"administrative_efficiency_raw_{start_year}_{end_year}.csv"
+            )
 
         print(f"Downloading administrative efficiency data ({start_year}-{end_year})...")
         df = self.download_administrative_efficiency(start_year=start_year, end_year=end_year)

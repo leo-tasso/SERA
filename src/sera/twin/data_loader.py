@@ -1,10 +1,11 @@
 """Data loading and preprocessing for the twin simulator."""
 
-import pandas as pd
-import numpy as np
-from pathlib import Path
-from typing import Dict, Tuple, Optional, List
 import logging
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+import numpy as np
+import pandas as pd
 
 from sera.twin.province_mapping import (
     NUTS_TO_SIGLA,
@@ -21,21 +22,19 @@ class DataLoader:
 
     def __init__(self, data_dir: Path):
         """Initialize data loader.
-        
+
         Args:
             data_dir: Path to the data directory
         """
         self.data_dir = Path(data_dir)
 
-    def load_indicator(
-        self, indicator_name: str, category: str
-    ) -> pd.DataFrame:
+    def load_indicator(self, indicator_name: str, category: str) -> pd.DataFrame:
         """Load indicator data from CSV.
-        
+
         Args:
             indicator_name: Name of the indicator (e.g., 'population')
             category: Category of the indicator (e.g., 'demographic')
-            
+
         Returns:
             DataFrame with columns: area_code, year, value
         """
@@ -51,12 +50,10 @@ class DataLoader:
 
         # Preserve area_code as text to avoid losing leading zeros in ISTAT-style codes.
         df = pd.read_csv(matching_files[0], dtype={"area_code": str})
-        
+
         # Extract area_code, year, and value columns
         if "population" in df.columns:
-            df = df[["area_code", "year", "population"]].rename(
-                columns={"population": "value"}
-            )
+            df = df[["area_code", "year", "population"]].rename(columns={"population": "value"})
         elif "value" in df.columns:
             df = df[["area_code", "year", "value"]]
         else:
@@ -68,10 +65,8 @@ class DataLoader:
             ]
             if len(numeric_cols) > 0:
                 value_col = numeric_cols[0]
-                df = df[["area_code", "year", value_col]].rename(
-                    columns={value_col: "value"}
-                )
-        
+                df = df[["area_code", "year", value_col]].rename(columns={value_col: "value"})
+
         return df.dropna(subset=["value"])
 
     # Provenance levels for a loaded indicator, in order of decreasing fidelity.
@@ -132,9 +127,7 @@ class DataLoader:
         # Does regional disaggregation alone lift coverage over the threshold?
         # (Needs the population file for weights; if absent, treat as no lift.)
         try:
-            regional_coverage = coverage(
-                self.disaggregate_regional_to_provincial(latest.copy())
-            )
+            regional_coverage = coverage(self.disaggregate_regional_to_provincial(latest.copy()))
         except Exception:
             regional_coverage = 0.0
         if regional_coverage >= coverage_threshold and regional_coverage > direct_coverage:
@@ -145,9 +138,7 @@ class DataLoader:
 
         return self.PROVENANCE_MIXED
 
-    def panel_provenance(
-        self, indicators: Dict[str, Tuple[str, object]]
-    ) -> Dict[str, str]:
+    def panel_provenance(self, indicators: Dict[str, Tuple[str, object]]) -> Dict[str, str]:
         """Provenance label for every indicator in a panel ``{name: (category, ...)}``."""
         provenance: Dict[str, str] = {}
         for name, meta in indicators.items():
@@ -162,12 +153,12 @@ class DataLoader:
         population_df: Optional[pd.DataFrame] = None,
     ) -> pd.DataFrame:
         """Disaggregate national-level data to provinces using population weights.
-        
+
         Args:
             df: DataFrame with national data (area_code='IT')
             year: Year to get population weights for
             population_df: Optional pre-loaded population data
-            
+
         Returns:
             DataFrame with values disaggregated to all provinces
         """
@@ -205,7 +196,9 @@ class DataLoader:
             province_sigla = map_area_code_to_sigla(str(row["area_code"]))
             if province_sigla is None:
                 continue
-            province_pops[province_sigla] = province_pops.get(province_sigla, 0.0) + float(row["value"])
+            province_pops[province_sigla] = province_pops.get(province_sigla, 0.0) + float(
+                row["value"]
+            )
 
         if not province_pops:
             return df
@@ -234,7 +227,7 @@ class DataLoader:
         self,
         df: pd.DataFrame,
         year: Optional[int] = None,
-        population_df: Optional[pd.DataFrame] = None
+        population_df: Optional[pd.DataFrame] = None,
     ) -> pd.DataFrame:
         """Disaggregate regional/macro area codes to provinces using population weights."""
         if population_df is None:
@@ -264,7 +257,9 @@ class DataLoader:
             province_sigla = map_area_code_to_sigla(str(row["area_code"]))
             if province_sigla is None:
                 continue
-            province_pops[province_sigla] = province_pops.get(province_sigla, 0.0) + float(row["value"])
+            province_pops[province_sigla] = province_pops.get(province_sigla, 0.0) + float(
+                row["value"]
+            )
 
         if not province_pops:
             return df
@@ -284,11 +279,13 @@ class DataLoader:
 
             # Keep rows already at province resolution.
             if map_area_code_to_sigla(raw_code) is not None:
-                non_regional_rows.append({
-                    "area_code": raw_code,
-                    "year": row["year"],
-                    "value": row["value"],
-                })
+                non_regional_rows.append(
+                    {
+                        "area_code": raw_code,
+                        "year": row["year"],
+                        "value": row["value"],
+                    }
+                )
                 continue
 
             target_provinces = sorted(token_to_provinces.get(raw_code, []))
@@ -330,13 +327,13 @@ class DataLoader:
         max_year: int = 2025,
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Prepare training data for indicators and parameters.
-        
+
         Args:
             indicators: Dict of indicators to load {name: (category, direction)}
             parameters: Dict of parameters to load {name: category}
             min_year: Minimum year to include
             max_year: Maximum year to include
-            
+
         Returns:
             Tuple of (indicators_df, parameters_df)
         """
@@ -360,11 +357,11 @@ class DataLoader:
                 df = self.standardize_to_province_level(df, interpolate_missing=True)
                 df = df[(df["year"] >= min_year) & (df["year"] <= max_year)]
                 parameters_dfs[param_name] = df
-        
+
         # Merge all indicators and parameters on area_code and year
         if not indicators_dfs:
             return pd.DataFrame(), pd.DataFrame()
-        
+
         # Start with first indicator
         combined_ind = None
         for ind_name, df in indicators_dfs.items():
@@ -372,28 +369,24 @@ class DataLoader:
                 index=["area_code", "year"], values="value", aggfunc="mean"
             ).reset_index()
             df_pivot.columns = ["area_code", "year", ind_name]
-            
+
             if combined_ind is None:
                 combined_ind = df_pivot
             else:
-                combined_ind = combined_ind.merge(
-                    df_pivot, on=["area_code", "year"], how="outer"
-                )
-        
+                combined_ind = combined_ind.merge(df_pivot, on=["area_code", "year"], how="outer")
+
         combined_par = None
         for param_name, df in parameters_dfs.items():
             df_pivot = df.pivot_table(
                 index=["area_code", "year"], values="value", aggfunc="mean"
             ).reset_index()
             df_pivot.columns = ["area_code", "year", param_name]
-            
+
             if combined_par is None:
                 combined_par = df_pivot
             else:
-                combined_par = combined_par.merge(
-                    df_pivot, on=["area_code", "year"], how="outer"
-                )
-        
+                combined_par = combined_par.merge(df_pivot, on=["area_code", "year"], how="outer")
+
         return combined_ind, combined_par
 
     def standardize_to_province_level(
@@ -435,15 +428,9 @@ class DataLoader:
 
         years = sorted(df["year"].dropna().astype(int).unique())
         all_provinces = self._get_provinces()
-        full_index = pd.MultiIndex.from_product(
-            [all_provinces, years], names=["area_code", "year"]
-        )
+        full_index = pd.MultiIndex.from_product([all_provinces, years], names=["area_code", "year"])
 
-        expanded = (
-            df.set_index(["area_code", "year"])["value"]
-            .reindex(full_index)
-            .reset_index()
-        )
+        expanded = df.set_index(["area_code", "year"])["value"].reindex(full_index).reset_index()
 
         for year in years:
             year_mask = expanded["year"] == year
@@ -454,15 +441,17 @@ class DataLoader:
                 national_mean = 0.0
 
             for region in sorted(set(PROVINCE_TO_REGION.values())):
-                provinces_in_region = [
-                    p for p, r in PROVINCE_TO_REGION.items() if r == region
-                ]
+                provinces_in_region = [p for p, r in PROVINCE_TO_REGION.items() if r == region]
                 region_mask = year_mask & expanded["area_code"].isin(provinces_in_region)
                 region_mean = expanded.loc[region_mask, "value"].mean()
                 fill_value = region_mean if not pd.isna(region_mean) else national_mean
-                expanded.loc[region_mask, "value"] = expanded.loc[region_mask, "value"].fillna(fill_value)
+                expanded.loc[region_mask, "value"] = expanded.loc[region_mask, "value"].fillna(
+                    fill_value
+                )
 
-            expanded.loc[year_mask, "value"] = expanded.loc[year_mask, "value"].fillna(national_mean)
+            expanded.loc[year_mask, "value"] = expanded.loc[year_mask, "value"].fillna(
+                national_mean
+            )
 
         return expanded
 

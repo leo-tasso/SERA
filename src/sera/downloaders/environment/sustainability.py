@@ -69,10 +69,14 @@ class SustainabilityDownloader:
         df_clean = df[["REF_AREA", "TIME_PERIOD", "OBS_VALUE"]].copy()
         df_clean.columns = ["area_code", "year", "waste_separate_collection_pct"]
         df_clean["year"] = pd.to_numeric(df_clean["year"], errors="coerce")
-        df_clean["waste_separate_collection_pct"] = pd.to_numeric(df_clean["waste_separate_collection_pct"], errors="coerce")
+        df_clean["waste_separate_collection_pct"] = pd.to_numeric(
+            df_clean["waste_separate_collection_pct"], errors="coerce"
+        )
         df_clean = df_clean.dropna(subset=["year", "waste_separate_collection_pct"])
         df_clean = df_clean[(df_clean["year"] >= start_year) & (df_clean["year"] <= end_year)]
-        df_clean = df_clean.sort_values(["area_code", "year"]).drop_duplicates(subset=["area_code", "year"])
+        df_clean = df_clean.sort_values(["area_code", "year"]).drop_duplicates(
+            subset=["area_code", "year"]
+        )
         return df_clean
 
     def save_sustainability_csv(

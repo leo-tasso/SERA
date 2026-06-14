@@ -48,7 +48,9 @@ class ExportsImportsDownloader:
             json.dump(self.table_mapping, handle, indent=2, ensure_ascii=False)
         return mapping_path
 
-    def download_exports_imports(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
+    def download_exports_imports(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
         csv_data = self.client.get_data(
             flow_id=self.dataflow_id,
             key=self.key,

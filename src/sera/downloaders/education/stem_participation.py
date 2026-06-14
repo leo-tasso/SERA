@@ -20,7 +20,21 @@ class StemParticipationDownloader:
 
         # STEM-focused groups from ISTAT CL_AREADIDATTICA codelist.
         self.stem_field_codes = {
-            "1", "2", "3", "5", "17", "18", "19", "20", "21", "24", "25", "42", "43", "44", "45"
+            "1",
+            "2",
+            "3",
+            "5",
+            "17",
+            "18",
+            "19",
+            "20",
+            "21",
+            "24",
+            "25",
+            "42",
+            "43",
+            "44",
+            "45",
         }
         self.total_field_code = "99"
 
@@ -58,7 +72,9 @@ class StemParticipationDownloader:
             json.dump(self.table_mapping, handle, indent=2, ensure_ascii=False)
         return mapping_path
 
-    def download_stem_participation(self, start_year: int = 2001, end_year: int = 2025) -> pd.DataFrame:
+    def download_stem_participation(
+        self, start_year: int = 2001, end_year: int = 2025
+    ) -> pd.DataFrame:
         """Download STEM participation with ISTAT geographic detail."""
         print(f"Fetching ISTAT STEM participation data from {self.flow_id}...")
 
@@ -66,7 +82,15 @@ class StemParticipationDownloader:
         effective_start = max(start_year, 2015)
         effective_end = min(end_year, 2017)
         if effective_start > effective_end:
-            return pd.DataFrame(columns=["area_code", "year", "stem_enrolled", "total_enrolled", "stem_participation_rate"])
+            return pd.DataFrame(
+                columns=[
+                    "area_code",
+                    "year",
+                    "stem_enrolled",
+                    "total_enrolled",
+                    "stem_participation_rate",
+                ]
+            )
 
         csv_data = self.client.get_data(
             flow_id=self.flow_id,
@@ -78,7 +102,15 @@ class StemParticipationDownloader:
         df = pd.read_csv(io.StringIO(csv_data), low_memory=False)
 
         if df.empty:
-            return pd.DataFrame(columns=["area_code", "year", "stem_enrolled", "total_enrolled", "stem_participation_rate"])
+            return pd.DataFrame(
+                columns=[
+                    "area_code",
+                    "year",
+                    "stem_enrolled",
+                    "total_enrolled",
+                    "stem_participation_rate",
+                ]
+            )
 
         filters = {"DATA_TYPE": "16", "SEX": "9", "CITIZENSHIP": "TOTAL"}
         for column, expected in filters.items():
@@ -86,12 +118,22 @@ class StemParticipationDownloader:
                 df = df[df[column].astype(str) == expected]
 
         if df.empty:
-            return pd.DataFrame(columns=["area_code", "year", "stem_enrolled", "total_enrolled", "stem_participation_rate"])
+            return pd.DataFrame(
+                columns=[
+                    "area_code",
+                    "year",
+                    "stem_enrolled",
+                    "total_enrolled",
+                    "stem_participation_rate",
+                ]
+            )
 
         df_clean = df[["REF_AREA", "FIELD_STUDY", "TIME_PERIOD", "OBS_VALUE"]].copy()
         df_clean.columns = ["area_code", "field_study_code", "year", "enrolled_students"]
         df_clean["year"] = pd.to_numeric(df_clean["year"], errors="coerce")
-        df_clean["enrolled_students"] = pd.to_numeric(df_clean["enrolled_students"], errors="coerce")
+        df_clean["enrolled_students"] = pd.to_numeric(
+            df_clean["enrolled_students"], errors="coerce"
+        )
         df_clean["field_study_code"] = df_clean["field_study_code"].astype(str)
         df_clean = df_clean.dropna(subset=["year", "enrolled_students"])
         df_clean = df_clean[(df_clean["year"] >= start_year) & (df_clean["year"] <= end_year)]
@@ -112,8 +154,12 @@ class StemParticipationDownloader:
         merged = total.merge(stem, on=["area_code", "year"], how="left")
         merged["stem_enrolled"] = merged["stem_enrolled"].fillna(0.0)
         merged = merged[merged["total_enrolled"] > 0]
-        merged["stem_participation_rate"] = (merged["stem_enrolled"] / merged["total_enrolled"]) * 100.0
-        merged = merged.sort_values(["area_code", "year"]).drop_duplicates(subset=["area_code", "year"])
+        merged["stem_participation_rate"] = (
+            merged["stem_enrolled"] / merged["total_enrolled"]
+        ) * 100.0
+        merged = merged.sort_values(["area_code", "year"]).drop_duplicates(
+            subset=["area_code", "year"]
+        )
 
         return merged
 

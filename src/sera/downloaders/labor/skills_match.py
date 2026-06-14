@@ -16,7 +16,9 @@ class SkillsMatchDownloader:
 
     def __init__(self):
         self.client = IstatClient()
-        self.flow_id = "172_931_DF_DCCV_NEET1_11"  # NEET rate (youth not in education or employment)
+        self.flow_id = (
+            "172_931_DF_DCCV_NEET1_11"  # NEET rate (youth not in education or employment)
+        )
 
         self.table_mapping: dict[str, Any] = {
             "indicator": "skills_match",
@@ -48,7 +50,7 @@ class SkillsMatchDownloader:
     def download_skills_match(self, start_year: int = 2018, end_year: int = 2025) -> pd.DataFrame:
         """Download NEET rate from ISTAT as skills match proxy."""
         print(f"Fetching ISTAT NEET data from {self.flow_id}...")
-        
+
         # Fetch with no key to get all dimensions
         csv_data = self.client.get_data(
             flow_id=self.flow_id,
@@ -57,21 +59,23 @@ class SkillsMatchDownloader:
             end_year=end_year,
             format="csv",
         )
-        
+
         if not csv_data or csv_data.strip() == "":
             print("Warning: No CSV data returned from ISTAT")
             return pd.DataFrame()
 
         df = pd.read_csv(io.StringIO(csv_data))
-        
+
         if df.empty or "OBS_VALUE" not in df.columns:
             return df
 
         # Filter for NEET age group 15-29, total sex, and NEET data type
         if "AGE" in df.columns and "SEX" in df.columns and "DATA_TYPE" in df.columns:
-            df = df[(df.get("AGE", "") == "Y15-29") & 
-                   (df.get("SEX", "") == 9) & 
-                   (df.get("DATA_TYPE", "") == "NEET_I")]
+            df = df[
+                (df.get("AGE", "") == "Y15-29")
+                & (df.get("SEX", "") == 9)
+                & (df.get("DATA_TYPE", "") == "NEET_I")
+            ]
             print(f"After filtering: {df.shape[0]} rows")
 
         if df.empty:
@@ -82,10 +86,14 @@ class SkillsMatchDownloader:
         df_clean.columns = ["area_code", "year", "neet_rate_percent"]
 
         df_clean["year"] = pd.to_numeric(df_clean["year"], errors="coerce")
-        df_clean["neet_rate_percent"] = pd.to_numeric(df_clean["neet_rate_percent"], errors="coerce")
+        df_clean["neet_rate_percent"] = pd.to_numeric(
+            df_clean["neet_rate_percent"], errors="coerce"
+        )
         df_clean = df_clean.dropna(subset=["year", "neet_rate_percent"])
         df_clean = df_clean[(df_clean["year"] >= start_year) & (df_clean["year"] <= end_year)]
-        df_clean = df_clean.sort_values(["area_code", "year"]).drop_duplicates(subset=["area_code", "year"])
+        df_clean = df_clean.sort_values(["area_code", "year"]).drop_duplicates(
+            subset=["area_code", "year"]
+        )
 
         return df_clean
 

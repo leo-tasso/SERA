@@ -1,14 +1,14 @@
 """Birth rate indicator downloader."""
 
+import io
 import json
 from pathlib import Path
 from typing import Any, Optional
 
 import pandas as pd
-import io
 
+from sera.config import CACHE_DIR, get_indicator_data_dir
 from sera.istat_client import IstatClient
-from sera.config import DATA_DIR, CACHE_DIR, get_indicator_data_dir
 
 
 class BirthRateDownloader:
@@ -86,9 +86,7 @@ class BirthRateDownloader:
         df = pd.read_csv(io.StringIO(csv_data))
 
         # Keep only essential columns and rename
-        df_clean = df[[
-            "RESIDENCE_TERR", "FREQ", "TIME_PERIOD", "OBS_VALUE"
-        ]].copy()
+        df_clean = df[["RESIDENCE_TERR", "FREQ", "TIME_PERIOD", "OBS_VALUE"]].copy()
 
         rename_map = {
             "RESIDENCE_TERR": "area_code",
