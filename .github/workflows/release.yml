@@ -30,9 +30,9 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Install UI dependencies
         # Not `npm ci`: the committed lockfile predates the electron-builder
@@ -65,21 +65,31 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Download all build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: artifacts
 
+      # Uses the preinstalled GitHub CLI (no Node.js runtime) rather than a
+      # third-party action, so nothing here depends on a deprecated Node version.
       - name: Create / update GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: SERA ${{ github.ref_name }}
-          generate_release_notes: true
-          files: artifacts/**/*
-          body: |
-            Automated desktop build of the SERA control-room UI.
-
-            **Runtime prerequisite:** the app spawns the Python backend
-            (`backend_bridge.py`), so the target machine needs Python 3.11+
-            with the project dependencies installed (`pip install -e .`).
-            The Python sources, trained twin, data, and GeoJSON are bundled
-            inside the package; only the interpreter must be present.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          shopt -s globstar nullglob
+          files=(artifacts/**/*)
+          printf '%s\n' \
+            'Automated desktop build of the SERA control-room UI.' \
+            '' \
+            '**Runtime prerequisite:** the app spawns the Python backend' \
+            '(`backend_bridge.py`), so the target machine needs Python 3.11+' \
+            'with the project dependencies installed (`pip install -e .`).' \
+            'The Python sources, trained twin, data, and GeoJSON are bundled' \
+            'inside the package; only the interpreter must be present.' > notes.md
+          if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${files[@]}" --repo "$REPO" --clobber
+          else
+            gh release create "$TAG" "${files[@]}" --repo "$REPO" \
+              --title "SERA $TAG" --notes-file notes.md
+          fi
