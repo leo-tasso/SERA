@@ -3,10 +3,21 @@ const fs = require('fs')
 const path = require('path')
 const { spawn } = require('child_process')
 
-const REPO_ROOT = path.resolve(__dirname, '..')
-const BRIDGE_PATH = path.join(__dirname, 'backend_bridge.py')
+// In a packaged build the Python backend, trained twin, data and GeoJSON are
+// shipped under <resources>/payload (see "extraResources" in package.json); in
+// development they live in the repository tree. The payload mirrors the repo
+// layout so backend_bridge.py (parents[1]/src) and sera.config (PROJECT_ROOT =
+// three levels up from config.py) resolve their paths unchanged either way.
+// REPO_ROOT is both the spawned Python process's cwd and the model-path base.
+const PAYLOAD_ROOT = app.isPackaged
+  ? path.join(process.resourcesPath, 'payload')
+  : path.resolve(__dirname, '..')
+const BACKEND_DIR = app.isPackaged ? path.join(PAYLOAD_ROOT, 'ui') : __dirname
+const REPO_ROOT = PAYLOAD_ROOT
+const BRIDGE_PATH = path.join(BACKEND_DIR, 'backend_bridge.py')
 const PROGRESS_PREFIX = '@@PROGRESS@@'
 const DEFAULT_MAP_PATHS = [
+  path.join(BACKEND_DIR, 'province_provinces.geojson'),
   path.join(__dirname, 'province_provinces.geojson'),
   path.join(process.env.USERPROFILE || 'C:\\Users\\Leonardo', 'Downloads', 'SERA', 'ui', 'province_provinces.geojson'),
 ]

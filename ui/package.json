@@ -1,13 +1,60 @@
 {
   "name": "sera-ui",
+  "productName": "SERA Control Room",
   "version": "0.1.0",
   "private": true,
+  "description": "SERA — ethically-governed digital twin of the Italian provinces (control-room UI).",
+  "author": "Leonardo Tassinari <leonardo.tassinari6@studio.unibo.it>",
+  "license": "MIT",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "dist": "electron-builder",
+    "dist:dir": "electron-builder --dir"
   },
-  "dependencies": {
+  "devDependencies": {
     "electron": "^26.0.0",
-    "sera-ui": "file:"
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "it.unibo.studio.sera",
+    "productName": "SERA Control Room",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.js",
+      "index.html",
+      "styles.css",
+      "assets/**/*",
+      "vendor/**/*",
+      "!tools/**/*",
+      "!__pycache__/**/*",
+      "!_tmp_target.txt",
+      "!dist/**/*"
+    ],
+    "extraResources": [
+      { "from": "../src", "to": "payload/src", "filter": ["**/*", "!**/__pycache__/**", "!**/*.pyc"] },
+      { "from": "../data", "to": "payload/data" },
+      { "from": "../twin_models.joblib", "to": "payload/twin_models.joblib" },
+      { "from": "backend_bridge.py", "to": "payload/ui/backend_bridge.py" },
+      { "from": "province_provinces.geojson", "to": "payload/ui/province_provinces.geojson" }
+    ],
+    "win": {
+      "target": ["nsis", "portable"],
+      "icon": "assets/icon.png"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "icon": "assets/icon.png",
+      "category": "Science"
+    },
+    "mac": {
+      "target": ["dmg", "zip"],
+      "icon": "assets/icon.png",
+      "category": "public.app-category.education"
+    }
   }
 }

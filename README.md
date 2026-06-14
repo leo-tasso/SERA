@@ -177,6 +177,41 @@ command: `bootstrap`, `province-trends`, `simulate-next-year`, `optimize-policy`
 python -m pytest tests -q
 ```
 
+## CI/CD
+
+The same two pipelines are defined for both GitHub Actions and GitLab CI:
+
+| Purpose | GitHub Actions | GitLab CI |
+| --- | --- | --- |
+| Run the test suite | `.github/workflows/tests.yml` (push / PR to `main`) | `pytest` job in `.gitlab-ci.yml` (every push / MR) |
+| Build the release executables | `.github/workflows/release.yml` (on tag `vX.Y.Z`) | `package-linux` + `release` jobs in `.gitlab-ci.yml` (on tag `vX.Y.Z`) |
+
+- **Tests** install the package with `pip install -e ".[dev]"` and run `pytest` with
+  coverage (GitHub additionally matrixes Python 3.11/3.12 and runs a non-blocking
+  `ruff`/`black` lint job).
+- **Release** packages the control-room UI with [electron-builder](https://www.electron.build/)
+  (config in `ui/package.json`). GitHub's matrix produces Windows (`nsis`, `portable`),
+  Linux (`AppImage`, `deb`) and macOS (`dmg`, `zip`) installers and attaches them to a
+  GitHub Release; GitLab's Linux runners produce the `AppImage`/`deb` and publish a GitLab
+  Release. Cut a release by pushing a tag:
+
+  ```powershell
+  git tag v0.1.0
+  git push origin v0.1.0
+  ```
+
+  The Python sources, trained `twin_models.joblib`, `data/`, and GeoJSON are bundled into
+  the package (`extraResources` → `<resources>/payload/…`, mirroring the repo layout so
+  `backend_bridge.py` and `sera.config` resolve unchanged). **Runtime prerequisite:** the
+  packaged app spawns the Python backend, so the target machine still needs Python 3.11+
+  with the project dependencies installed — the installer ships the code, not the
+  interpreter. (Freezing the backend with PyInstaller to drop that requirement is a
+  possible follow-up.)
+
+  > Note: `ui/package-lock.json` predates the `electron-builder` devDependency, so CI uses
+  > `npm install`. Run `npm install` in `ui/` once and commit the refreshed lockfile to
+  > switch the workflows back to `npm ci` for reproducible builds.
+
 ## Repository layout
 
 - `src/sera/config.py` — paths, ISTAT constants, indicator→category map
