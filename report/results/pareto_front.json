@@ -36,7 +36,7 @@
       },
       "finalGdpTotal": 233692.83216159992,
       "finalGini": 0.4387476160450081,
-      "worstProvinceGdp": 195.86425866077283,
+      "worstProvinceGdp": 195.8642586607728,
       "reservePool": 0.0,
       "tags": [
         "egalitarian"
@@ -123,9 +123,9 @@
         "housing_urban_development_support": 234.30675402320742,
         "environmental_regulations_strictness": 12.80716256101655
       },
-      "finalGdpTotal": 296649.6147849175,
-      "finalGini": 0.43875438637673514,
-      "worstProvinceGdp": 248.6256287873289,
+      "finalGdpTotal": 296649.61478491774,
+      "finalGini": 0.4387543863767356,
+      "worstProvinceGdp": 248.62562878732905,
       "reservePool": 0.0,
       "tags": []
     },

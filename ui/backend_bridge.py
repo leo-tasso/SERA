@@ -19,7 +19,12 @@ from sera.twin.budget import (
     budget_usage,
     make_constraint_fn,
 )
-from sera.twin.causal_graph import ANNUAL_PARAMETERS, INDICATOR_BOUNDS, get_parameter_reference
+from sera.twin.causal_graph import (
+    ANNUAL_PARAMETERS,
+    INDICATOR_BOUNDS,
+    INDICATOR_TO_INDICATORS,
+    get_parameter_reference,
+)
 from sera.twin.cli import load_initial_state
 from sera.twin.data_loader import DataLoader
 from sera.twin.model_trainer import ModelTrainer
@@ -38,7 +43,11 @@ from sera.twin.policy import (
     build_policy,
 )
 from sera.twin.province_mapping import PROVINCE_SIGLAS_110
-from sera.twin.simulator import CAUSAL_RULE_STRENGTH, DigitalTwinSimulator
+from sera.twin.simulator import (
+    CAUSAL_RULE_STRENGTH,
+    DigitalTwinSimulator,
+    documented_coupling_signs,
+)
 
 # SPENDING_PARAMS and TAX_PARAMS now live in sera.twin.budget (imported above)
 # so the headless experiments don't have to import this UI module to get them.
@@ -254,6 +263,25 @@ def _apply_budget_constraint(
 def _make_constraint_fn(spending_intensity_pct: float):
     """Bridge wrapper around :func:`sera.twin.budget.make_constraint_fn`."""
     return make_constraint_fn(spending_intensity_pct, _param_baselines())
+
+
+def coupling_signs_for_mode(mode: str):
+    """Inter-indicator propagation signs for an ablation mode.
+
+    - ``reviewed`` (default): documented signs overlaid with panel-learned signs
+      (``None`` -> the simulator's own resolution from data/learned_couplings.json);
+    - ``documented``: the polarity-derived signs only, no panel review;
+    - ``signless``: every edge +1, reproducing the original implementation that
+      pushed each target in the direction of its source's change.
+    """
+    if mode == "signless":
+        return {
+            src: {tgt: 1 for tgt in tgts}
+            for src, tgts in INDICATOR_TO_INDICATORS.items()
+        }
+    if mode == "documented":
+        return documented_coupling_signs()
+    return None  # 'reviewed' -> simulator loads learned overlay itself
 
 
 def build_parameters_frame(next_year: int, allocations: dict[str, dict[str, float]]) -> pd.DataFrame:
@@ -596,6 +624,7 @@ def compare_objectives(payload: dict) -> dict:
     iterations = max(1, min(int(payload.get('iterations') or 6), 40))
     model_id = str(payload.get('modelId') or 'neural')
     seed = int(payload.get('seed') or 0)
+    propagation_mode = str(payload.get('propagationMode') or 'reviewed')
     spending_intensity_pct = float(payload.get('spendingIntensityPct') or get_spending_intensity_pct())
     reserve_pool = float(payload.get('reservePool') or 0.0)
     final_year = current_year + horizon
@@ -604,7 +633,10 @@ def compare_objectives(payload: dict) -> dict:
     model_path = Path(payload.get('modelPath') or REPO_ROOT / 'twin_models.joblib')
     trainer = ModelTrainer.load(model_path)
     indicator_columns = [column for column in current_state.columns if column not in {'area_code', 'year'}]
-    simulator = DigitalTwinSimulator(trainer, indicator_columns, list(ANNUAL_PARAMETERS.keys()))
+    simulator = DigitalTwinSimulator(
+        trainer, indicator_columns, list(ANNUAL_PARAMETERS.keys()),
+        coupling_signs=coupling_signs_for_mode(propagation_mode),
+    )
     param_specs = [
         ParamSpec(item['key'], item['baseline'], item['min'], item['max'])
         for item in parameter_metadata()

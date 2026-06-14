@@ -1349,13 +1349,22 @@ function ParetoFrontier({ paretoResult, parameterMeta }) {
       .sort((a, b) => b.shift - a.shift)
   }, [selected, baselineByKey])
 
+  const nClusters = Number(paretoResult.nClusters) || 1
+  const clustered = nClusters > 1
+
   return (
     <React.Fragment>
       <p className="control-text" style={{ marginBottom: 10 }}>
-        NSGA-II evolved {paretoResult.evaluations} uniform national lever vectors over {paretoResult.generations} generations
+        NSGA-II evolved {paretoResult.evaluations}{' '}
+        {clustered
+          ? `per-cluster lever vectors (${nClusters} k-means regional packages)`
+          : 'uniform national lever vectors'}{' '}
+        over {paretoResult.generations} generations
         ({paretoResult.horizon} years, through {paretoResult.finalYear}). Every point below is non-dominated: improving one of
-        total GDP, inequality, or the worst-off province necessarily worsens another. The named ethical frameworks are corners
-        of this frontier, not separate truths.
+        total GDP, inequality, or the worst-off province necessarily worsens another.{' '}
+        {clustered
+          ? 'Because policy can differ across regions here, the frontier spans a real range of inequality — targeting, not national intensity, is what opens the trade-off.'
+          : 'The named ethical frameworks are corners of this frontier, not separate truths.'}
       </p>
       <ParetoScatter points={points} baseline={baseline} selectedIndex={selectedIndex} onSelectPoint={setSelectedIndex} />
       <div className="explain-scroll" style={{ marginTop: 12 }}>
@@ -1387,7 +1396,32 @@ function ParetoFrontier({ paretoResult, parameterMeta }) {
           </tbody>
         </table>
       </div>
-      {selected ? (
+      {selected && selected.clusters ? (
+        <div className="explain-section">
+          <h3 className="ethics-maps-title">
+            Regional packages of frontier point #{selectedIndex + 1} ({selected.clusters.length} clusters)
+          </h3>
+          {selected.clusters.map((cluster) => (
+            <div key={cluster.id} style={{ marginBottom: 12 }}>
+              <p className="control-text" style={{ marginBottom: 4 }}>
+                <strong>Cluster {cluster.id + 1}</strong> — {cluster.provinces} province{cluster.provinces === 1 ? '' : 's'}
+              </p>
+              <LeverDeltaTable
+                levers={Object.entries(cluster.levers || {})
+                  .map(([key, value]) => {
+                    const meta = baselineByKey[key] || {}
+                    return { lever: key, value: Number(value), baseline: Number(meta.baseline), min: meta.min, max: meta.max }
+                  })
+                  .sort((a, b) => {
+                    const sa = Number.isFinite(a.baseline) ? Math.abs(a.value - a.baseline) : 0
+                    const sb = Number.isFinite(b.baseline) ? Math.abs(b.value - b.baseline) : 0
+                    return sb - sa
+                  })}
+              />
+            </div>
+          ))}
+        </div>
+      ) : selected ? (
         <div className="explain-section">
           <h3 className="ethics-maps-title">Levers of frontier point #{selectedIndex + 1} (applied to every province)</h3>
           <LeverDeltaTable
@@ -1439,6 +1473,9 @@ function App() {
   const [isComparing, setIsComparing] = useState(false)
   const [paretoResult, setParetoResult] = useState(null)
   const [isPareto, setIsPareto] = useState(false)
+  // 1 = one uniform national lever vector; >1 = one lever vector per k-means
+  // region (the clustered search that can actually target provinces).
+  const [paretoClusters, setParetoClusters] = useState(1)
   const [compareResult, setCompareResult] = useState(null)
   const [adoptedCandidateId, setAdoptedCandidateId] = useState(null)
   const [runProgress, setRunProgress] = useState(null)
@@ -1760,6 +1797,7 @@ function App() {
         iterations: optimizeIterations,
         spendingIntensityPct,
         reservePool,
+        nClusters: paretoClusters,
       })
       setParetoResult(response)
     } catch (paretoError) {
@@ -1949,8 +1987,25 @@ function App() {
                 {isComparing ? 'Comparing frameworks…' : `Compare all ${objectives.length || 4} ethical frameworks`}
               </button>
               {isComparing && <RunProgress progress={runProgress} />}
+              <div className="model-inputs">
+                <label className="model-field">
+                  <span>Pareto regions (1 = uniform national policy)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={12}
+                    value={paretoClusters}
+                    disabled={isPareto}
+                    onChange={(event) => setParetoClusters(clamp(Number(event.target.value) || 1, 1, 12))}
+                  />
+                </label>
+              </div>
               <button className="primary-button" onClick={runPareto} disabled={isOptimizing || isSimulating || isComparing || isPareto || !latestStateRows.length}>
-                {isPareto ? 'Mapping the frontier…' : 'Map the efficiency–equity frontier (Pareto)'}
+                {isPareto
+                  ? 'Mapping the frontier…'
+                  : (paretoClusters > 1
+                    ? `Map the frontier — ${paretoClusters} regional packages`
+                    : 'Map the efficiency–equity frontier (Pareto)')}
               </button>
               {isPareto && <RunProgress progress={runProgress} />}
             </div>

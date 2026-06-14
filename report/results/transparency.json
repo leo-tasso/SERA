@@ -1,0 +1,73 @@
+{
+  "objective": "utilitarian",
+  "horizon": 10,
+  "iterations": 6,
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "finalYear": 2035,
+  "results": [
+    {
+      "modelId": "neural",
+      "explainability": "black-box",
+      "score_mean": 2984771.9216978825,
+      "score_std": 0.0,
+      "improvement_mean": 28.276324682204052,
+      "gdp_mean": 320005.738355868,
+      "gini_mean": 0.43183284758472773,
+      "worst_mean": 268.425240482371
+    },
+    {
+      "modelId": "linear",
+      "explainability": "white-box",
+      "score_mean": 2870892.6403910704,
+      "score_std": 0.0,
+      "improvement_mean": 22.464764713008787,
+      "gdp_mean": 298439.008122264,
+      "gini_mean": 0.45601166110527824,
+      "worst_mean": 217.24070777382494
+    },
+    {
+      "modelId": "rules",
+      "explainability": "white-box",
+      "score_mean": 2853300.489985964,
+      "score_std": 0.0,
+      "improvement_mean": 20.56250311365994,
+      "gdp_mean": 294999.2662377651,
+      "gini_mean": 0.44494914289425047,
+      "worst_mean": 239.6449151554924
+    },
+    {
+      "modelId": "cluster_cem",
+      "explainability": "white-box",
+      "score_mean": 2793329.0838444657,
+      "score_std": 0.0,
+      "improvement_mean": 18.028489305776528,
+      "gdp_mean": 283320.18283605913,
+      "gini_mean": 0.4327284979244683,
+      "worst_mean": 240.35737966896752
+    },
+    {
+      "modelId": "uniform_cem",
+      "explainability": "white-box",
+      "score_mean": 2915953.2300929404,
+      "score_std": 0.0,
+      "improvement_mean": 23.209813202708375,
+      "gdp_mean": 306013.7357449127,
+      "gini_mean": 0.4387552493001614,
+      "worst_mean": 256.4715961382733
+    },
+    {
+      "modelId": "uniform_bayes",
+      "explainability": "gray-box",
+      "score_mean": 3034220.2796899434,
+      "score_std": 0.0,
+      "improvement_mean": 28.20703364455262,
+      "gdp_mean": 328452.4155213272,
+      "gini_mean": 0.43875512405775763,
+      "worst_mean": 275.2779076447442
+    }
+  ]
+}

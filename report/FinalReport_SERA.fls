@@ -1,6 +1,6 @@
-PWD c:\Users\Leonardo\Desktop\SERA\report
+PWD C:\Users\Leonardo\Desktop\SERA\report
 INPUT C:\Users\Leonardo\AppData\Local\MiKTeX\miktex\data\le\pdftex\pdflatex.fmt
-INPUT c:\Users\Leonardo\Desktop\SERA\report\FinalReport_SERA.tex
+INPUT FinalReport_SERA.tex
 OUTPUT FinalReport_SERA.log
 INPUT C:\Program Files\MiKTeX\tex\latex\base\article.cls
 INPUT C:\Program Files\MiKTeX\tex\latex\base\article.cls
@@ -366,6 +366,24 @@ INPUT .\figures\pareto_clustered.pdf
 INPUT .\figures\pareto_clustered.pdf
 INPUT .\figures\pareto_clustered.pdf
 INPUT .\figures\pareto_clustered.pdf
+INPUT .\figures\prioritarian_sweep.pdf
+INPUT .\figures\prioritarian_sweep.pdf
+INPUT .\figures\prioritarian_sweep.pdf
+INPUT .\figures\prioritarian_sweep.pdf
+INPUT .\figures\prioritarian_sweep.pdf
+INPUT .\figures\prioritarian_sweep.pdf
+INPUT .\figures\sufficientarian_sweep.pdf
+INPUT .\figures\sufficientarian_sweep.pdf
+INPUT .\figures\sufficientarian_sweep.pdf
+INPUT .\figures\sufficientarian_sweep.pdf
+INPUT .\figures\sufficientarian_sweep.pdf
+INPUT .\figures\sufficientarian_sweep.pdf
+INPUT .\figures\transparency.pdf
+INPUT .\figures\transparency.pdf
+INPUT .\figures\transparency.pdf
+INPUT .\figures\transparency.pdf
+INPUT .\figures\transparency.pdf
+INPUT .\figures\transparency.pdf
 INPUT C:\Program Files\MiKTeX\fonts\tfm\jknappen\ec\ecbx0800.tfm
 INPUT C:\Program Files\MiKTeX\fonts\tfm\jknappen\ec\ecti0600.tfm
 INPUT C:\Program Files\MiKTeX\fonts\tfm\public\cm\cmbx10.tfm

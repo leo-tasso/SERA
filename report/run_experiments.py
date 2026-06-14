@@ -40,8 +40,10 @@ PARETO_POPSIZE = 12
 PARETO_CLUSTERS = 4  # per-cluster Pareto: how many regional packages to evolve
 MODEL_ID = "neural"  # the equity dashboard's default policy model
 
-# Multi-seed replication. Override with SERA_SEEDS=0,1,2,3,4 in the environment.
-SEEDS = [int(s) for s in os.environ.get("SERA_SEEDS", "0,1,2").split(",") if s != ""]
+# Multi-seed replication. Override with SERA_SEEDS=... in the environment.
+# Six seeds give usable bootstrap confidence intervals on the framework deltas
+# at a tractable runtime; raise for tighter intervals.
+SEEDS = [int(s) for s in os.environ.get("SERA_SEEDS", "0,1,2,3,4,5").split(",") if s != ""]
 
 # The frameworks compared head-to-head. CVaR sits next to Rawlsian so the
 # report can test the "maximin under-optimizes its own floor" hypothesis.

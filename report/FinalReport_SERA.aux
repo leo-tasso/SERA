@@ -115,13 +115,13 @@
 \newlabel{sec:results}{{9}{20}{Experimental Comparison of the Ethical Frameworks}{section.9}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {9.1}Experimental setup}{20}{subsection.9.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {9.2}Headline outcomes}{21}{subsection.9.2}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Final-year (2035) outcomes of the same neural policy trained under each ethical framework from the same 2025 state, as the mean over 3{} replication seeds (per-seed spread is reported in the text and Figure~\ref {fig:trajectories}'s bands). ``Total GDP'' is the sum of provincial GDP per capita (the system's national proxy); ``worst prov.''\ is the lowest provincial GDP per capita. Values are in the twin's native model units: disaggregated indicator levels are population-share estimates (Section~\ref {sec:data}), so absolute levels are not euro-interpretable and the meaningful comparisons are relative.}}{21}{table.caption.9}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Final-year (2035) outcomes of the same neural policy trained under each ethical framework from the same 2025 state, as the mean over 6{} replication seeds (per-seed spread is reported in the text and Figure~\ref {fig:trajectories}'s bands). ``Total GDP'' is the sum of provincial GDP per capita (the system's national proxy); ``worst prov.''\ is the lowest provincial GDP per capita. Values are in the twin's native model units: disaggregated indicator levels are population-share estimates (Section~\ref {sec:data}), so absolute levels are not euro-interpretable and the meaningful comparisons are relative.}}{21}{table.caption.9}\protected@file@percent }
 \newlabel{tab:headline}{{4}{21}{Final-year (\cmpFinalYear ) outcomes of the same neural policy trained under each ethical framework from the same 2025 state, as the mean over \cmpSeeds {} replication seeds (per-seed spread is reported in the text and Figure~\ref {fig:trajectories}'s bands). ``Total GDP'' is the sum of provincial GDP per capita (the system's national proxy); ``worst prov.''\ is the lowest provincial GDP per capita. Values are in the twin's native model units: disaggregated indicator levels are population-share estimates (Section~\ref {sec:data}), so absolute levels are not euro-interpretable and the meaningful comparisons are relative}{table.caption.9}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Simulated trajectories 2026--2035{} under each ethical framework (same neural policy, same training budget, same budget constraint) against the baseline scenario: total national GDP (left), inter-provincial Gini on GDP per capita (center), worst-off province's GDP per capita (right). Lines are the mean over 3{} seeds; shaded bands are $\pm 1$ standard deviation across seeds, i.e.\ the run-to-run spread of the gradient-free search.}}{21}{figure.caption.10}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Simulated trajectories 2026--2035{} under each ethical framework (same neural policy, same training budget, same budget constraint) against the baseline scenario: total national GDP (left), inter-provincial Gini on GDP per capita (center), worst-off province's GDP per capita (right). Lines are the mean over 6{} seeds; shaded bands are $\pm 1$ standard deviation across seeds, i.e.\ the run-to-run spread of the gradient-free search.}}{21}{figure.caption.10}\protected@file@percent }
 \newlabel{fig:trajectories}{{2}{21}{Simulated trajectories 2026--\cmpFinalYear {} under each ethical framework (same neural policy, same training budget, same budget constraint) against the baseline scenario: total national GDP (left), inter-provincial Gini on GDP per capita (center), worst-off province's GDP per capita (right). Lines are the mean over \cmpSeeds {} seeds; shaded bands are $\pm 1$ standard deviation across seeds, i.e.\ the run-to-run spread of the gradient-free search}{figure.caption.10}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {9.3}Who gains, who loses}{21}{subsection.9.3}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Training convergence per framework: cumulative objective improvement over the untrained network (\%) versus ES iteration, mean over 3{} seeds (bands $\pm 1$ std). Plotted as relative improvement so the four very different objective scales are comparable on one axis. Hard maximin's one-province signal gives it the least to climb on; the smoothed CVaR variant, scoring the worst 20\% of provinces, gets a denser gradient.}}{22}{figure.caption.11}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Training convergence per framework: cumulative objective improvement over the untrained network (\%) versus ES iteration, mean over 6{} seeds (bands $\pm 1$ std). Plotted as relative improvement so the four very different objective scales are comparable on one axis. Hard maximin's one-province signal gives it the least to climb on; the smoothed CVaR variant, scoring the worst 20\% of provinces, gets a denser gradient.}}{22}{figure.caption.11}\protected@file@percent }
 \newlabel{fig:convergence}{{3}{22}{Training convergence per framework: cumulative objective improvement over the untrained network (\%) versus ES iteration, mean over \cmpSeeds {} seeds (bands $\pm 1$ std). Plotted as relative improvement so the four very different objective scales are comparable on one axis. Hard maximin's one-province signal gives it the least to climb on; the smoothed CVaR variant, scoring the worst 20\% of provinces, gets a denser gradient}{figure.caption.11}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.3}Who gains, who loses}{22}{subsection.9.3}\protected@file@percent }
 \@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Distribution over the 110 provinces of final-year GDP per capita change versus the baseline scenario, per ethical framework (boxes: quartiles; whiskers: 5th--95th percentile). The frameworks differ not only in their means but in the \emph  {shape} of who benefits.}}{22}{figure.caption.12}\protected@file@percent }
 \newlabel{fig:deltas}{{4}{22}{Distribution over the 110 provinces of final-year GDP per capita change versus the baseline scenario, per ethical framework (boxes: quartiles; whiskers: 5th--95th percentile). The frameworks differ not only in their means but in the \emph {shape} of who benefits}{figure.caption.12}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {9.4}The efficiency--equity frontier}{22}{subsection.9.4}\protected@file@percent }
@@ -131,17 +131,38 @@
 \newlabel{sec:clustered}{{9.5}{23}{The frontier returns once policy can target: the clustered search}{subsection.9.5}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces NSGA-II over \emph  {per-cluster} lever vectors (4{} k-means regional packages; 6{} generations, population 12{}). Unlike the uniform front, this one spans a real range of inequality (Gini 0.411--0.418), so efficiency (horizontal) and equity (vertical) are genuinely in tension; colour encodes the worst-off province's GDP. The red cross marks the baseline. Targeting --- not the overall intensity of national policy --- is what opens the trade-off.}}{24}{figure.caption.14}\protected@file@percent }
 \newlabel{fig:paretoclustered}{{6}{24}{NSGA-II over \emph {per-cluster} lever vectors (\parcClusters {} k-means regional packages; \parGens {} generations, population \parPop {}). Unlike the uniform front, this one spans a real range of inequality (Gini \parcGiniLo --\parcGiniHi ), so efficiency (horizontal) and equity (vertical) are genuinely in tension; colour encodes the worst-off province's GDP. The red cross marks the baseline. Targeting --- not the overall intensity of national policy --- is what opens the trade-off}{figure.caption.14}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {9.6}Reading the results}{24}{subsection.9.6}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {10}Discussion}{26}{section.10}\protected@file@percent }
-\newlabel{sec:discussion}{{10}{26}{Discussion}{section.10}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {10.1}What the comparison shows}{26}{subsection.10.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {10.2}Trade-offs exist only under calibrated scarcity}{26}{subsection.10.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {10.3}The assumptions dominate aggressive scenarios}{26}{subsection.10.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {10.4}Threats to validity}{26}{subsection.10.4}\protected@file@percent }
-\newlabel{sec:threats}{{10.4}{26}{Threats to validity}{subsection.10.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {10.5}Limits of the paradigm}{27}{subsection.10.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {11}Conclusions}{27}{section.11}\protected@file@percent }
-\newlabel{sec:conclusions}{{11}{27}{Conclusions}{section.11}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.6}The prioritarian continuum, swept}{24}{subsection.9.6}\protected@file@percent }
+\newlabel{sec:sweep}{{9.6}{24}{The prioritarian continuum, swept}{subsection.9.6}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Prioritarian sweep: final-year total GDP (left), inter-provincial Gini (center), and the worst-off province (right) as the concavity $\rho $ rises from the utilitarian end ($\rho {=}0$) toward maximin. Means over 3{} seeds. The single parameter traces the efficiency--equity continuum as a curve.}}{24}{figure.caption.15}\protected@file@percent }
+\newlabel{fig:sweep}{{7}{24}{Prioritarian sweep: final-year total GDP (left), inter-provincial Gini (center), and the worst-off province (right) as the concavity $\rho $ rises from the utilitarian end ($\rho {=}0$) toward maximin. Means over \sweepSeeds {} seeds. The single parameter traces the efficiency--equity continuum as a curve}{figure.caption.15}{}}
+\citation{rudin2019}
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.7}The sufficiency threshold, swept}{25}{subsection.9.7}\protected@file@percent }
+\newlabel{sec:suffsweep}{{9.7}{25}{The sufficiency threshold, swept}{subsection.9.7}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Sufficientarian sweep: final-year total GDP (left), Gini (center), and the worst-off province (right) as the sufficiency threshold $\theta $ rises. Means over 3{} seeds. Raising the ``enough'' line shifts the optimizer's effort toward the floor.}}{25}{figure.caption.16}\protected@file@percent }
+\newlabel{fig:suffsweep}{{8}{25}{Sufficientarian sweep: final-year total GDP (left), Gini (center), and the worst-off province (right) as the sufficiency threshold $\theta $ rises. Means over \suffSeeds {} seeds. Raising the ``enough'' line shifts the optimizer's effort toward the floor}{figure.caption.16}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.8}How much the sign review matters: a propagation ablation}{25}{subsection.9.8}\protected@file@percent }
+\newlabel{sec:ablation}{{9.8}{25}{How much the sign review matters: a propagation ablation}{subsection.9.8}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Propagation-mode ablation (3{} seeds): floor change vs.\ baseline and final Gini under each inter-indicator propagation rule. Making propagation sign-aware (sign-less $\to $ documented) is the load-bearing change; the panel review is a smaller refinement on top. The utilitarian Gini is a control and barely moves.}}{25}{table.caption.17}\protected@file@percent }
+\newlabel{tab:ablation}{{5}{25}{Propagation-mode ablation (\ablSeeds {} seeds): floor change vs.\^^Mbaseline and final Gini under each inter-indicator propagation rule. Making propagation sign-aware (sign-less $\to $ documented) is the load-bearing change; the panel review is a smaller refinement on top. The utilitarian Gini is a control and barely moves}{table.caption.17}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.9}The price of transparency, measured}{26}{subsection.9.9}\protected@file@percent }
+\newlabel{sec:transparency}{{9.9}{26}{The price of transparency, measured}{subsection.9.9}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Price of transparency (3{} seeds, utilitarian objective): each policy model's cumulative objective score as a percentage of the neural policy's, with its explainability badge and final-year metrics. The white-box models recover most of the black box's performance, so transparency is cheap in this twin.}}{26}{table.caption.18}\protected@file@percent }
+\newlabel{tab:transparency}{{6}{26}{Price of transparency (\transSeeds {} seeds, utilitarian objective): each policy model's cumulative objective score as a percentage of the neural policy's, with its explainability badge and final-year metrics. The white-box models recover most of the black box's performance, so transparency is cheap in this twin}{table.caption.18}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces The score gap to the neural policy for each model (utilitarian objective, 3{} seeds). Shorter bars are cheaper transparency; the white-box models give up little.}}{26}{figure.caption.19}\protected@file@percent }
+\newlabel{fig:transparency}{{9}{26}{The score gap to the neural policy for each model (utilitarian objective, \transSeeds {} seeds). Shorter bars are cheaper transparency; the white-box models give up little}{figure.caption.19}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.10}Reading the results}{26}{subsection.9.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {10}Discussion}{28}{section.10}\protected@file@percent }
+\newlabel{sec:discussion}{{10}{28}{Discussion}{section.10}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {10.1}What the comparison shows}{28}{subsection.10.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {10.2}Trade-offs exist only under calibrated scarcity}{28}{subsection.10.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {10.3}The assumptions dominate aggressive scenarios}{29}{subsection.10.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {10.4}Threats to validity}{29}{subsection.10.4}\protected@file@percent }
+\newlabel{sec:threats}{{10.4}{29}{Threats to validity}{subsection.10.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {10.5}Limits of the paradigm}{29}{subsection.10.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {11}Conclusions}{29}{section.11}\protected@file@percent }
+\newlabel{sec:conclusions}{{11}{29}{Conclusions}{section.11}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {12}Reproducibility}{30}{section.12}\protected@file@percent }
+\newlabel{sec:repro}{{12}{30}{Reproducibility}{section.12}{}}
 \bibcite{bentham1789}{1}
 \bibcite{mill1863}{2}
 \bibcite{mulgan2007}{3}
@@ -150,8 +171,6 @@
 \bibcite{rawls2001}{6}
 \bibcite{wenar2025}{7}
 \bibcite{harsanyi1975}{8}
-\@writefile{toc}{\contentsline {section}{\numberline {12}Reproducibility}{28}{section.12}\protected@file@percent }
-\newlabel{sec:repro}{{12}{28}{Reproducibility}{section.12}{}}
 \bibcite{bidadanure2025}{9}
 \bibcite{lamont2017}{10}
 \bibcite{anderson1999}{11}
@@ -171,17 +190,17 @@
 \bibcite{rubinstein2004}{25}
 \bibcite{frazier2018}{26}
 \bibcite{aiact2024}{27}
-\@writefile{toc}{\contentsline {section}{\numberline {A}Implementation Algorithms}{30}{appendix.A}\protected@file@percent }
-\@writefile{loa}{\contentsline {algocf}{\numberline {1}{\ignorespaces One simulated year (\texttt  {DigitalTwinSimulator.simulate\_year})}}{30}{algocf.1}\protected@file@percent }
-\newlabel{alg:simyear}{{1}{30}{Implementation Algorithms}{algocf.1}{}}
-\@writefile{loa}{\contentsline {algocf}{\numberline {2}{\ignorespaces National budget constraint (applied every simulated year)}}{30}{algocf.2}\protected@file@percent }
-\newlabel{alg:budget}{{2}{30}{Implementation Algorithms}{algocf.2}{}}
-\@writefile{loa}{\contentsline {algocf}{\numberline {3}{\ignorespaces Mirrored-sampling Evolution Strategies (\texttt  {neural} and \texttt  {linear} policies)}}{31}{algocf.3}\protected@file@percent }
-\newlabel{alg:es}{{3}{31}{Implementation Algorithms}{algocf.3}{}}
-\@writefile{loa}{\contentsline {algocf}{\numberline {4}{\ignorespaces Cross-Entropy Method (shared by \texttt  {rules}, \texttt  {cluster\_cem}, \texttt  {uniform\_cem})}}{31}{algocf.4}\protected@file@percent }
-\newlabel{alg:cem}{{4}{31}{Implementation Algorithms}{algocf.4}{}}
-\@writefile{loa}{\contentsline {algocf}{\numberline {5}{\ignorespaces Efficiency--equity Pareto front (\texttt  {sera.twin.pareto})}}{31}{algocf.5}\protected@file@percent }
-\newlabel{alg:nsga}{{5}{31}{Implementation Algorithms}{algocf.5}{}}
-\@writefile{loa}{\contentsline {algocf}{\numberline {6}{\ignorespaces Post-hoc audit of the neural policy (\texttt  {sera.twin.explain})}}{32}{algocf.6}\protected@file@percent }
-\newlabel{alg:audit}{{6}{32}{Implementation Algorithms}{algocf.6}{}}
-\gdef \@abspage@last{32}
+\@writefile{toc}{\contentsline {section}{\numberline {A}Implementation Algorithms}{32}{appendix.A}\protected@file@percent }
+\@writefile{loa}{\contentsline {algocf}{\numberline {1}{\ignorespaces One simulated year (\texttt  {DigitalTwinSimulator.simulate\_year})}}{33}{algocf.1}\protected@file@percent }
+\newlabel{alg:simyear}{{1}{33}{Implementation Algorithms}{algocf.1}{}}
+\@writefile{loa}{\contentsline {algocf}{\numberline {2}{\ignorespaces National budget constraint (applied every simulated year)}}{33}{algocf.2}\protected@file@percent }
+\newlabel{alg:budget}{{2}{33}{Implementation Algorithms}{algocf.2}{}}
+\@writefile{loa}{\contentsline {algocf}{\numberline {3}{\ignorespaces Mirrored-sampling Evolution Strategies (\texttt  {neural} and \texttt  {linear} policies)}}{33}{algocf.3}\protected@file@percent }
+\newlabel{alg:es}{{3}{33}{Implementation Algorithms}{algocf.3}{}}
+\@writefile{loa}{\contentsline {algocf}{\numberline {4}{\ignorespaces Cross-Entropy Method (shared by \texttt  {rules}, \texttt  {cluster\_cem}, \texttt  {uniform\_cem})}}{34}{algocf.4}\protected@file@percent }
+\newlabel{alg:cem}{{4}{34}{Implementation Algorithms}{algocf.4}{}}
+\@writefile{loa}{\contentsline {algocf}{\numberline {5}{\ignorespaces Efficiency--equity Pareto front (\texttt  {sera.twin.pareto})}}{34}{algocf.5}\protected@file@percent }
+\newlabel{alg:nsga}{{5}{34}{Implementation Algorithms}{algocf.5}{}}
+\@writefile{loa}{\contentsline {algocf}{\numberline {6}{\ignorespaces Post-hoc audit of the neural policy (\texttt  {sera.twin.explain})}}{34}{algocf.6}\protected@file@percent }
+\newlabel{alg:audit}{{6}{34}{Implementation Algorithms}{algocf.6}{}}
+\gdef \@abspage@last{34}

@@ -1264,9 +1264,15 @@ what-if: the twin state is never advanced.
     (\parcClusters{} k-means regional packages) to test whether targeting
     recovers a trade-off uniform policy cannot express
     (Section~\ref{sec:clustered}).
+    \item \textbf{Continuum sweep and ablation:} the prioritarian objective is
+    additionally trained across a ladder of concavities
+    (Section~\ref{sec:sweep}), and the headline comparison is re-run under three
+    inter-indicator propagation rules to measure how much the data-reviewed
+    edge signs matter (Section~\ref{sec:ablation}).
 \end{itemize}
 
-All numbers below are produced by \code{report/run\_experiments.py} and
+All numbers below are produced by \code{report/run\_experiments.py},
+\code{run\_prioritarian\_sweep.py}, \code{run\_ablation.py}, and
 \code{report/plot\_results.py}; no result is hand-typed. The usual caveat
 applies with full force: these are properties of the \emph{simulator}, not of
 Italy (Section~\ref{sec:uncertainty}).
@@ -1440,6 +1446,165 @@ policy --- is what opens the trade-off.}
 \label{fig:paretoclustered}
 \end{figure}
 
+\subsection{The prioritarian continuum, swept}
+\label{sec:sweep}
+
+The objectives so far are discrete points; the prioritarian objective
+(Section~\ref{sec:notimplemented}) is instead a \emph{dial}. Its concavity
+$\rho$ interpolates between utilitarian ($\rho{=}0$, identical by construction)
+and maximin ($\rho{\to}1$), so sweeping it should trace the efficiency--floor
+continuum that the uniform Pareto search could not. Training the neural policy
+at a ladder of concavities (\sweepSeeds-seed means; Figure~\ref{fig:sweep})
+confirms it: as $\rho$ rises from $0$ to \sweepRhoHi, total GDP moves from
+\sweepGdpAtZero\% to \sweepGdpAtHi\% versus baseline while the worst-off
+province rises from \sweepWorstAtZero\% to \sweepWorstAtHi\%, and the Gini falls
+from \sweepGiniAtZero{} to \sweepGiniAtHi. The $\rho{=}0$ end reproduces the
+utilitarian objective by construction; its sweep figures differ from the
+headline utilitarian row of Table~\ref{tab:headline} only by seed noise (this
+sweep averages \sweepSeeds{} seeds against the headline's \cmpSeeds{}, and the
+floor is the highest-variance axis). A single scalar slides the optimizer
+from the rising tide to the floor-first regime --- the prioritarian gradient
+that sits, philosophically and now empirically, between SERA's two endpoints,
+and a concrete way for a decision-maker to choose \emph{how much} priority the
+worst-off get rather than toggling between extremes.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\textwidth]{figures/prioritarian_sweep.pdf}
+\caption{Prioritarian sweep: final-year total GDP (left), inter-provincial Gini
+(center), and the worst-off province (right) as the concavity $\rho$ rises from
+the utilitarian end ($\rho{=}0$) toward maximin. Means over \sweepSeeds{} seeds.
+The single parameter traces the efficiency--equity continuum as a curve.}
+\label{fig:sweep}
+\end{figure}
+
+\subsection{The sufficiency threshold, swept}
+\label{sec:suffsweep}
+
+The other tunable objective is sufficientarian: minimise the shortfall below a
+threshold $\theta$, where everything above $\theta$ is morally irrelevant and
+$\theta$ \emph{is} the theory (Section~\ref{sec:notimplemented}). Sweeping it
+(\suffSeeds-seed means, $\theta$ as a multiple of the starting median province;
+Figure~\ref{fig:suffsweep}) shows the optimizer responding to where the
+``enough'' line is drawn --- but not in the way one might first guess. As
+$\theta$ rises from \suffThetaLo{} to \suffThetaHi{} the floor stays high
+(\suffWorstAtLo\%~$\to$~\suffWorstAtHi\% over baseline) and inequality stays low
+(Gini \suffGiniAtLo~$\to$~\suffGiniAtHi, well below the baseline \baseGini); what
+moves sharply is the \emph{GDP cost}, from \suffGdpAtLo\% to \suffGdpAtHi\%. The
+mechanism is instructive: a low bar marks only the very poorest as ``not
+enough,'' which the optimizer meets with concentrated, costly transfers; a higher
+bar implicates most provinces, which it meets with a broader and far cheaper
+lift. Where the sufficiency line sits changes less about the floor reached than
+about how much growth is sacrificed to hold it --- the sufficientarian trade-off,
+made selectable rather than smuggled into a default. That the threshold is exposed as a slider rather than a
+hard-coded constant is the point: the one value that carries the entire moral
+content of the framework is placed in the user's hands, not smuggled into a
+default.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\textwidth]{figures/sufficientarian_sweep.pdf}
+\caption{Sufficientarian sweep: final-year total GDP (left), Gini (center), and
+the worst-off province (right) as the sufficiency threshold $\theta$ rises.
+Means over \suffSeeds{} seeds. Raising the ``enough'' line shifts the
+optimizer's effort toward the floor.}
+\label{fig:suffsweep}
+\end{figure}
+
+\subsection{How much the sign review matters: a propagation ablation}
+\label{sec:ablation}
+
+The inter-indicator propagation was changed twice in this work: from
+sign-\emph{less} (every target moved with its source) to \emph{documented}
+(polarity-derived signs), and then to \emph{reviewed} (those signs corrected by
+the panel; Section~\ref{sec:datareview}). Table~\ref{tab:ablation} re-runs the
+headline comparison (\ablSeeds{} seeds) under all three to show the change is
+load-bearing, not cosmetic. The decisive step is making propagation
+sign-\emph{aware} at all: moving from \code{signless} to \code{documented}
+shifts the egalitarian floor and Gini materially, because mis-signed links like
+income$\to$poverty were previously pushing inequality the wrong way. The panel
+\code{review} on top --- flipping \strEdgesFlipped{} edges and dropping
+\strEdgesDropped{} unsupported ones --- is a smaller, data-driven refinement.
+The control column (utilitarian Gini, which should barely move since
+utilitarianism is distribution-blind) stays nearly flat across modes, as
+expected.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Propagation mode} & \textbf{Egal.\ floor} & \textbf{Egal.\ Gini} &
+\textbf{Rawls floor} & \textbf{Util.\ Gini (control)} \\
+\midrule
+Sign-less (original) & \ablSignlessEgalWorst\% & \ablSignlessEgalGini & \ablSignlessRawlsWorst\% & \ablSignlessUtilGini \\
+Documented signs & \ablDocumentedEgalWorst\% & \ablDocumentedEgalGini & \ablDocumentedRawlsWorst\% & \ablDocumentedUtilGini \\
+Reviewed (ships) & \ablReviewedEgalWorst\% & \ablReviewedEgalGini & \ablReviewedRawlsWorst\% & \ablReviewedUtilGini \\
+\bottomrule
+\end{tabular}
+\caption{Propagation-mode ablation (\ablSeeds{} seeds): floor change vs.\
+baseline and final Gini under each inter-indicator propagation rule. Making
+propagation sign-aware (sign-less $\to$ documented) is the load-bearing change;
+the panel review is a smaller refinement on top. The utilitarian Gini is a
+control and barely moves.}
+\label{tab:ablation}
+\end{table}
+
+\subsection{The price of transparency, measured}
+\label{sec:transparency}
+
+Section~\ref{sec:policymodels} claims the explainability spectrum lets the
+black-box-vs-white-box performance gap be \emph{measured} per problem rather
+than assumed --- but the comparison so far uses only the neural policy. Training
+every model under one objective (utilitarian), one budget, and \transSeeds{}
+seeds closes that gap (Table~\ref{tab:transparency},
+Figure~\ref{fig:transparency}). The result is the encouraging one for
+contestability: in this twin the white-box models pay little or nothing for
+their legibility. The linear policy --- the same per-province setup as the
+neural one minus the hidden layer --- scores \transLinearRel\% of the neural
+policy's cumulative objective; the cross-entropy uniform and cluster policies and
+the rule list land within a few percent of it too. More strikingly, the
+gray-box Gaussian-process policy \emph{edges past} the black box
+(\transUnifBayesRel\%), so here legibility is not merely cheap but, for one
+model, free. With the twin's effects bounded by the realism caps, the extra
+expressive capacity of a hidden layer buys little, and the inherently
+interpretable models recover essentially all of it --- the empirical half of
+Rudin's argument~\cite{rudin2019}, answered with data for this problem instance
+rather than asserted.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{llrrr}
+\toprule
+\textbf{Policy model} & \textbf{Badge} & \textbf{Score (\% of neural)} &
+\textbf{Total GDP} & \textbf{Gini} \\
+\midrule
+Neural (MLP) & \transNeuralBadge & \transNeuralRel & \transNeuralGdp & \transNeuralGini \\
+Linear & \transLinearBadge & \transLinearRel & \transLinearGdp & \transLinearGini \\
+Rule list & \transRulesBadge & \transRulesRel & \transRulesGdp & \transRulesGini \\
+Regional clusters & \transClusterBadge & \transClusterRel & \transClusterGdp & \transClusterGini \\
+Uniform (CEM) & \transUnifCemBadge & \transUnifCemRel & \transUnifCemGdp & \transUnifCemGini \\
+Uniform (Bayesian) & \transUnifBayesBadge & \transUnifBayesRel & \transUnifBayesGdp & \transUnifBayesGini \\
+\bottomrule
+\end{tabular}
+\caption{Price of transparency (\transSeeds{} seeds, utilitarian objective):
+each policy model's cumulative objective score as a percentage of the neural
+policy's, with its explainability badge and final-year metrics. The white-box
+models recover most of the black box's performance, so transparency is cheap in
+this twin.}
+\label{tab:transparency}
+\end{table}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.7\textwidth]{figures/transparency.pdf}
+\caption{The score gap to the neural policy for each model (utilitarian
+objective, \transSeeds{} seeds). Shorter bars are cheaper transparency; the
+white-box models give up little.}
+\label{fig:transparency}
+\end{figure}
+
 \subsection{Reading the results}
 
 Six observations, with the standing caveat that they describe the simulator
@@ -1452,10 +1617,12 @@ Six observations, with the standing caveat that they describe the simulator
     evaluation axes (Table~\ref{tab:headline}): total GDP ranges from
     \cmpRawlsGdpDelta\% (maximin) to \cmpUtilGdpDelta\% (utilitarian) versus
     baseline, the Gini from \cmpCvarGini{} to \cmpWellGini{}, and the floor from
-    \cmpUtilWorstDelta\% to \cmpEgalWorstDelta\%. The separations survive
-    replication where the trajectory bands (Figure~\ref{fig:trajectories}) do
-    not overlap: the ethical choice is not decorative --- it is the difference
-    between the rows.
+    \cmpUtilWorstDelta\% to \cmpEgalWorstDelta\%. With \cmpSeeds{} seeds these
+    carry tight bootstrap confidence intervals --- the utilitarian GDP gain is
+    \cmpUtilGdpDelta$\pm$\cmpUtilGdpCI\%, its floor \cmpUtilWorstDelta$\pm$%
+    \cmpUtilWorstCI\% (95\% CI) --- and the headline orderings below that we
+    flag as robust are exactly those whose intervals do not overlap. The ethical
+    choice is not decorative: it is the difference between the rows.
     \item \textbf{The utilitarian optimum is a rising tide that under-serves the
     floor.} Utilitarianism grows total GDP the most (\cmpUtilGdpDelta\%) and
     leaves the Gini near baseline (\cmpUtilGini{} vs.\ \baseGini): the twin's
@@ -1463,18 +1630,19 @@ Six observations, with the standing caveat that they describe the simulator
     province by a similar amount (Figure~\ref{fig:deltas}, a tight box around
     $+11\%$). But distribution-blindness shows where it counts --- the floor it
     reaches ($+$\cmpUtilWorstDelta\%) is the \emph{lowest} of the interventions
-    and noticeably more seed-variable than the equity runs
+    and more seed-variable than the maximin-family floors
     ($\pm$\cmpUtilWorstStd{} on the worst-off province vs.\
-    $\pm$\cmpRawlsWorstStd{} for maximin and $\pm$\cmpEgalWorstStd{} for Sen).
+    $\pm$\cmpRawlsWorstStd{} for maximin and $\pm$\cmpCvarWorstStd{} for CVaR).
     The rising tide does lift the floor, but only incidentally, and the
-    frameworks that \emph{target} it reach $6$--$7$ points higher (below). The
+    frameworks that \emph{target} it reach $8$--$10$ points higher (below). The
     classic objection survives, in a milder form than the textbook: not
     sacrifice of the few, but indifference --- the worst-off rise as a
     by-product rather than a goal.
     \item \textbf{Maximin reliably raises the floor --- and multi-seed
     replication is what shows it.} Under \cmpSeeds{} seeds, maximin lifts the
-    worst-off province by \cmpRawlsWorstDelta\% (to \cmpRawlsWorst) with the
-    \emph{lowest} floor-variance of any framework ($\pm$\cmpRawlsWorstStd),
+    worst-off province by \cmpRawlsWorstDelta\% (to \cmpRawlsWorst) with one of
+    the \emph{lowest} floor-variances of any framework ($\pm$\cmpRawlsWorstStd,
+    second only to its smoothed CVaR variant below),
     comfortably above the utilitarian floor --- the difference principle doing
     what it promises. This is worth dwelling on methodologically: a
     \emph{single}-seed version of this same experiment had shown maximin's
@@ -1488,30 +1656,34 @@ Six observations, with the standing caveat that they describe the simulator
     the richest tail hard (down roughly 35--45\% in Figure~\ref{fig:deltas})
     because everything above the minimum is worth nothing to it --- and the GDP
     it concedes for the higher floor is a real \cmpRawlsGdpDelta\%.
-    \item \textbf{Smoothing maximin dominates it --- answering the sparsity
-    question.} The CVaR objective, scoring the worst 20\% of provinces instead
-    of the single poorest, was included to test whether maximin's sparse
-    one-province signal was the real source of its troubles. Under the same
-    seeds the answer is now unambiguous: CVaR \emph{beats} hard maximin on every
-    axis at once --- a higher floor (\cmpCvarWorst{} vs \cmpRawlsWorst), less
-    GDP forgone (\cmpCvarGdpDelta\% vs \cmpRawlsGdpDelta\%), under a third of the
-    GDP variance ($\pm$\cmpCvarGdpStd{} vs $\pm$\cmpRawlsGdpStd), and the
-    \emph{lowest Gini of any framework} (\cmpCvarGini). The sparse one-province
-    signal was indeed holding maximin back; broadening it to the bottom quintile
-    --- still a thoroughly Rawlsian criterion --- recovers a strictly better
-    outcome on the difference principle's own terms. This is the clearest
-    payoff of holding the theory fixed and varying only the objective's
-    smoothness, and a concrete argument for preferring the CVaR form in
-    practice.
+    \item \textbf{Smoothing maximin weakly dominates it --- answering the
+    sparsity question.} The CVaR objective, scoring the worst 20\% of provinces
+    instead of the single poorest, was included to test whether maximin's sparse
+    one-province signal was the real source of its troubles. Across \cmpSeeds{}
+    seeds CVaR matches or beats hard maximin on every axis of the means: an
+    equal-or-higher floor (\cmpCvarWorst{} vs \cmpRawlsWorst), less GDP forgone
+    (\cmpCvarGdpDelta\% vs \cmpRawlsGdpDelta\%), lower run-to-run variance, and
+    the \emph{lowest Gini of any framework} (\cmpCvarGini). The honest reading,
+    given the spreads: the \emph{floor} difference between the two is
+    \sigCvarRawlsFloor{} (the paired 95\% bootstrap CI on the per-seed difference
+    includes zero --- they reach statistically the same floor), so smoothing the
+    sparse signal does
+    not \emph{cost} the floor; what it robustly buys is a lower GDP price, tighter
+    inequality, and less seed variance. That is still a clean answer to the
+    sparsity question --- broadening maximin's signal to the bottom quintile is a
+    free lunch on every axis except the floor it leaves untouched --- and a
+    concrete argument for preferring the CVaR form in practice.
     \item \textbf{Sen welfare is the efficiency--equity sweet spot.} The
     egalitarian run reaches the \emph{highest floor of any framework}
-    (\cmpEgalWorstDelta\%, at the lowest floor-variance $\pm$\cmpEgalWorstStd)
+    (\cmpEgalWorstDelta\%, though at the \emph{largest} floor-variance of any
+    framework, $\pm$\cmpEgalWorstStd)
     \emph{and} still grows total GDP (\cmpEgalGdpDelta\%), holding the Gini at
     \cmpEgalGini{} --- achieved (Figure~\ref{fig:deltas}) by lifting almost
     every province while trimming only a handful of the richest. Because its
     score multiplies growth by equality, it draws training signal from the whole
     distribution, which is plausibly why it alone pairs the top floor with
-    positive growth. The wellbeing run lands with the utilitarian on GDP
+    positive growth. Its floor advantage over the utilitarian run is
+    \sigEgalUtilFloor{} across \cmpSeeds{} seeds (paired 95\% bootstrap CI). The wellbeing run lands with the utilitarian on GDP
     (\cmpWellGdpDelta\%) but distributes its gains tightly across every province,
     routed through its health/employment/poverty channels rather than GDP alone.
     \item \textbf{The frontier exposes where the trade-off actually lives.}
@@ -1569,8 +1741,8 @@ run. The second is substantive: a moral principle's practical meaning depends
 on the response structure of the system it optimizes \emph{and} on how
 optimizable its objective is --- which is why we added the smoothed CVaR
 maximin, and why the lesson it teaches (broadening maximin's one-province
-signal to the bottom quintile strictly improves the floor, the growth, and the
-inequality it delivers) could only be read off an experiment that held the
+signal to the bottom quintile improves the growth and inequality it delivers at
+no cost to the floor) could only be read off an experiment that held the
 theory fixed. The methodological content is the point: \emph{the moral
 criterion is an experimental variable}, and a system built this way can answer
 ``what would the Rawlsian recommendation cost, and who pays?'' with a number, a
@@ -1663,7 +1835,7 @@ how readily it can be optimized: maximin and its smoothed CVaR variant
 reliably protected the worst-off province (at a modest GDP cost and by visibly
 sacrificing the richest tail), while the distribution-blind utilitarian run
 grew the average most but left the floor lowest and more seed-variable than the
-frameworks that target it.
+maximin-family frameworks that target it.
 That last comparison only became trustworthy under replication: a single seed
 had shown maximin's floor falling \emph{below} the utilitarian one --- a tidy
 ``maximin under-optimizes itself'' story that multi-seed replication exposed as
@@ -1715,8 +1887,12 @@ This writes \code{twin\_models.joblib} (used by the UI) and
 are reproduced by (matplotlib required for the figures):
 
 \begin{verbatim}
-.venv\Scripts\python.exe report\run_experiments.py
-.venv\Scripts\python.exe report\plot_results.py
+.venv\Scripts\python.exe report\run_experiments.py        # headline comparison + Pareto
+.venv\Scripts\python.exe report\run_prioritarian_sweep.py # the continuum sweep
+.venv\Scripts\python.exe report\run_ablation.py           # propagation-mode ablation
+.venv\Scripts\python.exe report\run_transparency.py       # price of transparency
+.venv\Scripts\python.exe report\run_sufficientarian_sweep.py  # sufficiency-threshold sweep
+.venv\Scripts\python.exe report\plot_results.py           # figures + results_macros.tex
 \end{verbatim}
 
 which write the raw JSON to \code{report/results/}, the figures to

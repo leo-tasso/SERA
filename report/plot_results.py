@@ -82,6 +82,42 @@ def final_values(per_seed_results, oid, key):
     return np.array(values, dtype=float)
 
 
+def bootstrap_delta_ci(values, base, n=4000, seed=0):
+    """95% bootstrap CI for the percent delta of mean(values) vs baseline.
+
+    Returns (mean_delta_pct, lo, hi, half_width). Resamples the seed-level
+    values with replacement, so it reflects run-to-run search variance.
+    """
+    values = np.asarray(values, dtype=float)
+    if values.size == 0 or base == 0:
+        return float("nan"), float("nan"), float("nan"), float("nan")
+    rng = np.random.default_rng(seed)
+    means = values[rng.integers(0, values.size, size=(n, values.size))].mean(axis=1)
+    deltas = 100.0 * (means - base) / base
+    lo, hi = np.percentile(deltas, [2.5, 97.5])
+    mean_delta = 100.0 * (values.mean() - base) / base
+    return float(mean_delta), float(lo), float(hi), float((hi - lo) / 2.0)
+
+
+def bootstrap_diff_significant(a, b, n=4000, seed=0):
+    """True if the PAIRED difference mean(a - b) has a 95% bootstrap CI off zero.
+
+    The frameworks share seeds (each trains with the same ES RNG per seed), so
+    their per-seed results are paired; a paired bootstrap resamples seed indices
+    once and differences within seed, which removes the shared search-noise
+    component and is far more powerful than treating the two samples as
+    independent.
+    """
+    a, b = np.asarray(a, dtype=float), np.asarray(b, dtype=float)
+    if a.size == 0 or b.size == 0 or a.size != b.size:
+        return False
+    diff = a - b  # paired per-seed differences
+    rng = np.random.default_rng(seed)
+    means = diff[rng.integers(0, diff.size, size=(n, diff.size))].mean(axis=1)
+    lo, hi = np.percentile(means, [2.5, 97.5])
+    return bool(lo > 0 or hi < 0)
+
+
 def main() -> None:
     comparison = json.loads((RESULTS_DIR / "compare_objectives.json").read_text())
     pareto = json.loads((RESULTS_DIR / "pareto_front.json").read_text())
@@ -310,6 +346,25 @@ def main() -> None:
         macro(f"cmp{s}GdpDelta", f"{100.0 * (gdp_v.mean() - base_gdp) / base_gdp:+.1f}")
         macro(f"cmp{s}WorstDelta", f"{100.0 * (worst_v.mean() - base_worst) / base_worst:+.1f}")
         macro(f"cmp{s}TrainImpr", f"{impr_v.mean():+.1f}")
+        # 95% bootstrap CI half-widths on the deltas (improvement #5).
+        _, _, _, gdp_hw = bootstrap_delta_ci(gdp_v, base_gdp)
+        _, _, _, worst_hw = bootstrap_delta_ci(worst_v, base_worst)
+        macro(f"cmp{s}GdpCI", f"{gdp_hw:.1f}")
+        macro(f"cmp{s}WorstCI", f"{worst_hw:.1f}")
+
+    # Significance of the headline claims (95% bootstrap CI on the difference
+    # of two frameworks' floors excludes zero?). Emitted as Yes/No so the prose
+    # can state inference rather than eyeballing.
+    def yesno(flag):
+        return "significant" if flag else "not significant"
+
+    worst_by = {oid: final_values(per_seed, oid, "worstProvinceGdp") for oid in present}
+    if "egalitarian" in worst_by and "utilitarian" in worst_by:
+        macro("sigEgalUtilFloor", yesno(bootstrap_diff_significant(
+            worst_by["egalitarian"], worst_by["utilitarian"])))
+    if "cvar" in worst_by and "rawlsian" in worst_by:
+        macro("sigCvarRawlsFloor", yesno(bootstrap_diff_significant(
+            worst_by["cvar"], worst_by["rawlsian"])))
 
     # Uniform Pareto macros (unchanged names).
     macro("parPoints", len(pareto["points"]))
@@ -366,6 +421,149 @@ def main() -> None:
         macro("strEdgesFlipped", f["wiring"]["flipped_count"])
         macro("strEdgesDropped", f["wiring"]["dropped_count"])
         macro("strEdgesTotal", f["wiring"]["edges_total"])
+
+    # ------------------------------------------------------------------ #
+    # Prioritarian continuum sweep (improvement #2)
+    # ------------------------------------------------------------------ #
+    sweep_path = RESULTS_DIR / "prioritarian_sweep.json"
+    if sweep_path.exists():
+        sw = json.loads(sweep_path.read_text())
+        rhos = [p["rho"] for p in sw["points"]]
+        b = sw["baseline"]
+        gdp_d = [100 * (p["gdp_mean"] - b["finalGdpTotal"]) / b["finalGdpTotal"] for p in sw["points"]]
+        worst_d = [100 * (p["worst_mean"] - b["worstProvinceGdp"]) / b["worstProvinceGdp"] for p in sw["points"]]
+        ginis = [p["gini_mean"] for p in sw["points"]]
+        fig, axes = plt.subplots(1, 3, figsize=(13, 3.6))
+        for ax, ys, title in zip(
+            axes, [gdp_d, ginis, worst_d],
+            ["Total GDP vs baseline (%)", "Inter-provincial Gini", "Worst-off province vs baseline (%)"],
+        ):
+            ax.plot(rhos, ys, "-o", color="#7b3294", lw=1.8, markersize=4)
+            ax.set_xlabel(r"prioritarian concavity $\rho$", fontsize=9)
+            ax.set_title(title, fontsize=9)
+            ax.grid(alpha=0.25)
+            ax.tick_params(labelsize=8)
+        axes[0].annotate("utilitarian\nend", (rhos[0], gdp_d[0]), fontsize=7,
+                         textcoords="offset points", xytext=(6, -2))
+        axes[0].annotate("maximin\nend", (rhos[-1], gdp_d[-1]), fontsize=7,
+                         textcoords="offset points", xytext=(-30, 6))
+        fig.tight_layout()
+        fig.savefig(FIG_DIR / "prioritarian_sweep.pdf")
+        plt.close(fig)
+        macro("sweepSeeds", len(sw.get("seeds", [])))
+        macro("sweepRhoHi", f"{rhos[-1]:.2f}")
+        macro("sweepGdpAtZero", f"{gdp_d[0]:+.1f}")
+        macro("sweepGdpAtHi", f"{gdp_d[-1]:+.1f}")
+        macro("sweepWorstAtZero", f"{worst_d[0]:+.1f}")
+        macro("sweepWorstAtHi", f"{worst_d[-1]:+.1f}")
+        macro("sweepGiniAtZero", fmt_gini(ginis[0]))
+        macro("sweepGiniAtHi", fmt_gini(ginis[-1]))
+
+    # ------------------------------------------------------------------ #
+    # Propagation-mode ablation (improvement #3)
+    # ------------------------------------------------------------------ #
+    abl_path = RESULTS_DIR / "ablation.json"
+    if abl_path.exists():
+        ab = json.loads(abl_path.read_text())
+
+        def mode_metric(mode_block, oid, key):
+            vals = []
+            for entry in mode_block["perSeed"]:
+                r = {x["objectiveId"]: x for x in entry["results"]}.get(oid)
+                if r and r.get(key) is not None:
+                    vals.append(float(r[key]))
+            return float(np.mean(vals)) if vals else float("nan")
+
+        mode_tokens = {"signless": "Signless", "documented": "Documented", "reviewed": "Reviewed"}
+        for mode, tok in mode_tokens.items():
+            block = ab["byMode"].get(mode)
+            if not block:
+                continue
+            bw = block["baseline"]["worstProvinceGdp"]
+            bg = block["baseline"]["finalGdpTotal"]
+            # Egalitarian is the most sign-sensitive row; utilitarian Gini as a control.
+            egal_gini = mode_metric(block, "egalitarian", "finalGini")
+            egal_worst = mode_metric(block, "egalitarian", "worstProvinceGdp")
+            rawls_worst = mode_metric(block, "rawlsian", "worstProvinceGdp")
+            util_gini = mode_metric(block, "utilitarian", "finalGini")
+            macro(f"abl{tok}EgalGini", fmt_gini(egal_gini))
+            macro(f"abl{tok}EgalWorst", f"{100 * (egal_worst - bw) / bw:+.1f}")
+            macro(f"abl{tok}RawlsWorst", f"{100 * (rawls_worst - bw) / bw:+.1f}")
+            macro(f"abl{tok}UtilGini", fmt_gini(util_gini))
+        macro("ablSeeds", len(ab["seeds"]))
+
+    # ------------------------------------------------------------------ #
+    # Price of transparency (improvement #1)
+    # ------------------------------------------------------------------ #
+    trans_path = RESULTS_DIR / "transparency.json"
+    if trans_path.exists():
+        tr = json.loads(trans_path.read_text())
+        by_id = {r["modelId"]: r for r in tr["results"]}
+        neural_score = (by_id.get("neural") or {}).get("score_mean")
+        badge_text = {"white-box": "white box", "gray-box": "gray box",
+                      "black-box": "black box", None: "black box"}
+        tok = {"neural": "Neural", "linear": "Linear", "rules": "Rules",
+               "cluster_cem": "Cluster", "uniform_cem": "UnifCem", "uniform_bayes": "UnifBayes"}
+        for mid, t in tok.items():
+            r = by_id.get(mid)
+            if not r or r.get("score_mean") is None:
+                continue
+            rel = 100.0 * r["score_mean"] / neural_score if neural_score else float("nan")
+            macro(f"trans{t}Rel", f"{rel:.1f}")
+            macro(f"trans{t}Gap", f"{100.0 - rel:+.1f}")
+            macro(f"trans{t}Badge", badge_text.get(r.get("explainability"), "white box"))
+            if r.get("gdp_mean") is not None:
+                macro(f"trans{t}Gdp", fmt_gdp(r["gdp_mean"]))
+                macro(f"trans{t}Gini", fmt_gini(r["gini_mean"]))
+        macro("transSeeds", len(tr.get("seeds", [])))
+        # Bar chart of the score gap (price of transparency) vs the neural policy.
+        order = [m for m in tok if m in by_id and by_id[m].get("score_mean") is not None]
+        gaps = [100.0 * (1 - by_id[m]["score_mean"] / neural_score) for m in order]
+        fig, ax = plt.subplots(figsize=(7.2, 3.8))
+        colors = ["#999999" if m == "neural" else "#1f77b4" for m in order]
+        ax.bar([tok[m] for m in order], gaps, color=colors, edgecolor="black", linewidth=0.4)
+        ax.axhline(0, color="#555", lw=0.8)
+        ax.set_ylabel("Objective score below neural (%)", fontsize=9)
+        ax.set_title("Price of transparency (utilitarian objective)", fontsize=9)
+        ax.tick_params(labelsize=8)
+        ax.grid(axis="y", alpha=0.25)
+        fig.tight_layout()
+        fig.savefig(FIG_DIR / "transparency.pdf")
+        plt.close(fig)
+
+    # ------------------------------------------------------------------ #
+    # Sufficientarian threshold sweep (improvement #4)
+    # ------------------------------------------------------------------ #
+    suff_path = RESULTS_DIR / "sufficientarian_sweep.json"
+    if suff_path.exists():
+        su = json.loads(suff_path.read_text())
+        th = [p["theta"] for p in su["points"]]
+        b = su["baseline"]
+        gdp_d = [100 * (p["gdp_mean"] - b["finalGdpTotal"]) / b["finalGdpTotal"] for p in su["points"]]
+        worst_d = [100 * (p["worst_mean"] - b["worstProvinceGdp"]) / b["worstProvinceGdp"] for p in su["points"]]
+        ginis = [p["gini_mean"] for p in su["points"]]
+        fig, axes = plt.subplots(1, 3, figsize=(13, 3.6))
+        for ax, ys, title in zip(
+            axes, [gdp_d, ginis, worst_d],
+            ["Total GDP vs baseline (%)", "Inter-provincial Gini", "Worst-off province vs baseline (%)"],
+        ):
+            ax.plot(th, ys, "-o", color="#2c7fb8", lw=1.8, markersize=4)
+            ax.set_xlabel(r"sufficiency threshold $\theta$ ($\times$ start median)", fontsize=9)
+            ax.set_title(title, fontsize=9)
+            ax.grid(alpha=0.25)
+            ax.tick_params(labelsize=8)
+        fig.tight_layout()
+        fig.savefig(FIG_DIR / "sufficientarian_sweep.pdf")
+        plt.close(fig)
+        macro("suffSeeds", len(su.get("seeds", [])))
+        macro("suffThetaLo", f"{th[0]:.2f}")
+        macro("suffThetaHi", f"{th[-1]:.2f}")
+        macro("suffGdpAtLo", f"{gdp_d[0]:+.1f}")
+        macro("suffGdpAtHi", f"{gdp_d[-1]:+.1f}")
+        macro("suffWorstAtLo", f"{worst_d[0]:+.1f}")
+        macro("suffWorstAtHi", f"{worst_d[-1]:+.1f}")
+        macro("suffGiniAtLo", fmt_gini(ginis[0]))
+        macro("suffGiniAtHi", fmt_gini(ginis[-1]))
 
     (REPORT_DIR / "results_macros.tex").write_text("\n".join(lines) + "\n")
     print("Figures and results_macros.tex written.")

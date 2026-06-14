@@ -45,16 +45,20 @@
 \contentsline {section}{\numberline {9}Experimental Comparison of the Ethical Frameworks}{20}{section.9}%
 \contentsline {subsection}{\numberline {9.1}Experimental setup}{20}{subsection.9.1}%
 \contentsline {subsection}{\numberline {9.2}Headline outcomes}{21}{subsection.9.2}%
-\contentsline {subsection}{\numberline {9.3}Who gains, who loses}{21}{subsection.9.3}%
+\contentsline {subsection}{\numberline {9.3}Who gains, who loses}{22}{subsection.9.3}%
 \contentsline {subsection}{\numberline {9.4}The efficiency--equity frontier}{22}{subsection.9.4}%
 \contentsline {subsection}{\numberline {9.5}The frontier returns once policy can target: the clustered search}{23}{subsection.9.5}%
-\contentsline {subsection}{\numberline {9.6}Reading the results}{24}{subsection.9.6}%
-\contentsline {section}{\numberline {10}Discussion}{26}{section.10}%
-\contentsline {subsection}{\numberline {10.1}What the comparison shows}{26}{subsection.10.1}%
-\contentsline {subsection}{\numberline {10.2}Trade-offs exist only under calibrated scarcity}{26}{subsection.10.2}%
-\contentsline {subsection}{\numberline {10.3}The assumptions dominate aggressive scenarios}{26}{subsection.10.3}%
-\contentsline {subsection}{\numberline {10.4}Threats to validity}{26}{subsection.10.4}%
-\contentsline {subsection}{\numberline {10.5}Limits of the paradigm}{27}{subsection.10.5}%
-\contentsline {section}{\numberline {11}Conclusions}{27}{section.11}%
-\contentsline {section}{\numberline {12}Reproducibility}{28}{section.12}%
-\contentsline {section}{\numberline {A}Implementation Algorithms}{30}{appendix.A}%
+\contentsline {subsection}{\numberline {9.6}The prioritarian continuum, swept}{24}{subsection.9.6}%
+\contentsline {subsection}{\numberline {9.7}The sufficiency threshold, swept}{25}{subsection.9.7}%
+\contentsline {subsection}{\numberline {9.8}How much the sign review matters: a propagation ablation}{25}{subsection.9.8}%
+\contentsline {subsection}{\numberline {9.9}The price of transparency, measured}{26}{subsection.9.9}%
+\contentsline {subsection}{\numberline {9.10}Reading the results}{26}{subsection.9.10}%
+\contentsline {section}{\numberline {10}Discussion}{28}{section.10}%
+\contentsline {subsection}{\numberline {10.1}What the comparison shows}{28}{subsection.10.1}%
+\contentsline {subsection}{\numberline {10.2}Trade-offs exist only under calibrated scarcity}{28}{subsection.10.2}%
+\contentsline {subsection}{\numberline {10.3}The assumptions dominate aggressive scenarios}{29}{subsection.10.3}%
+\contentsline {subsection}{\numberline {10.4}Threats to validity}{29}{subsection.10.4}%
+\contentsline {subsection}{\numberline {10.5}Limits of the paradigm}{29}{subsection.10.5}%
+\contentsline {section}{\numberline {11}Conclusions}{29}{section.11}%
+\contentsline {section}{\numberline {12}Reproducibility}{30}{section.12}%
+\contentsline {section}{\numberline {A}Implementation Algorithms}{32}{appendix.A}%
