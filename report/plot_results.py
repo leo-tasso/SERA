@@ -24,6 +24,11 @@ RESULTS_DIR = REPORT_DIR / "results"
 FIG_DIR = REPORT_DIR / "figures"
 FIG_DIR.mkdir(exist_ok=True)
 
+import sys
+
+sys.path.insert(0, str(REPORT_DIR.parent / "src"))
+from sera.twin.province_mapping import PROVINCE_TO_MACROAREA  # noqa: E402
+
 # Headline frameworks plotted in the trajectory/delta figures and the table.
 OBJECTIVE_ORDER = ["utilitarian", "rawlsian", "cvar", "egalitarian", "wellbeing"]
 COLORS = {
@@ -421,6 +426,68 @@ def main() -> None:
         macro("strEdgesFlipped", f["wiring"]["flipped_count"])
         macro("strEdgesDropped", f["wiring"]["dropped_count"])
         macro("strEdgesTotal", f["wiring"]["edges_total"])
+
+    # ------------------------------------------------------------------ #
+    # The North--South divide, per framework (the report's motivating cleavage,
+    # read off the same per-province results; figure + macros).
+    # ------------------------------------------------------------------ #
+    def area_means(by_prov):
+        acc = {"North": [], "Centre": [], "South": []}
+        for code, value in by_prov.items():
+            area = PROVINCE_TO_MACROAREA.get(str(code).strip().upper())
+            if area:
+                acc[area].append(float(value))
+        return {a: (float(np.mean(v)) if v else float("nan")) for a, v in acc.items()}
+
+    base_area = area_means(baseline["finalGdpByProvince"])
+    macro("nsBaseNorth", f"{base_area['North']:.0f}")
+    macro("nsBaseSouth", f"{base_area['South']:.0f}")
+    macro("nsBaseRatio", f"{base_area['South'] / base_area['North']:.3f}")
+    area_counts = {"North": 0, "Centre": 0, "South": 0}
+    for area in PROVINCE_TO_MACROAREA.values():
+        area_counts[area] += 1
+    macro("nsProvNorth", area_counts["North"])
+    macro("nsProvCentre", area_counts["Centre"])
+    macro("nsProvSouth", area_counts["South"])
+
+    north_d, south_d, labels_ns = [], [], []
+    for oid in present:
+        nd, sd, ratios = [], [], []
+        for entry in per_seed:
+            result = {r["objectiveId"]: r for r in entry["results"]}.get(oid)
+            if not result:
+                continue
+            m = area_means(result["finalGdpByProvince"])
+            nd.append(100 * (m["North"] - base_area["North"]) / base_area["North"])
+            sd.append(100 * (m["South"] - base_area["South"]) / base_area["South"])
+            ratios.append(m["South"] / m["North"])
+        if not nd:
+            continue
+        north_d.append(float(np.mean(nd)))
+        south_d.append(float(np.mean(sd)))
+        labels_ns.append(oid)
+        s = SHORT[oid]
+        macro(f"ns{s}North", f"{np.mean(nd):+.1f}")
+        macro(f"ns{s}South", f"{np.mean(sd):+.1f}")
+        macro(f"ns{s}Ratio", f"{np.mean(ratios):.3f}")
+
+    fig, ax = plt.subplots(figsize=(8.5, 4.0))
+    xs_ns = np.arange(len(labels_ns))
+    w = 0.38
+    ax.bar(xs_ns - w / 2, north_d, w, label=f"North ({area_counts['North']} prov.)",
+           color="#1f77b4", edgecolor="black", linewidth=0.4)
+    ax.bar(xs_ns + w / 2, south_d, w, label=f"South / Mezzogiorno ({area_counts['South']} prov.)",
+           color="#d62728", edgecolor="black", linewidth=0.4)
+    ax.axhline(0, color="#555", lw=0.8)
+    ax.set_xticks(xs_ns)
+    ax.set_xticklabels([LABELS[o] for o in labels_ns], fontsize=8)
+    ax.set_ylabel("Mean provincial GDP p.c. vs baseline (%)", fontsize=9)
+    ax.set_title("North vs South response by ethical framework", fontsize=9)
+    ax.legend(fontsize=8, frameon=False)
+    ax.grid(axis="y", alpha=0.25)
+    fig.tight_layout()
+    fig.savefig(FIG_DIR / "north_south.pdf")
+    plt.close(fig)
 
     # ------------------------------------------------------------------ #
     # Prioritarian continuum sweep (improvement #2)

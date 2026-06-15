@@ -77,7 +77,11 @@ story that dissolved under replication as search luck. The NSGA-II search then
 reveals that \emph{uniform} national policy cannot trade efficiency against
 inequality at all, while a clustered search that can target regions makes the
 trade-off reappear: distributional outcomes are determined by per-province
-\emph{targeting}. The project's central claim is that an optimizer always
+\emph{targeting}. Read in the dimension that motivated the choice of Italy ---
+the North--South divide --- the frameworks separate cleanly: the utilitarian
+tide leaves the gap untouched, maximin closes it by leveling the North down, and
+only Sen welfare narrows it while both regions grow. The project's central claim
+is that an optimizer always
 embodies an ethical framework; SERA's contribution is to make that framework
 visible, swappable, and inspectable.
 \end{abstract}
@@ -1369,6 +1373,93 @@ whiskers: 5th--95th percentile). The frameworks differ not only in their means
 but in the \emph{shape} of who benefits.}
 \label{fig:deltas}
 \end{figure}
+
+\subsection{The North--South divide}
+\label{sec:northsouth}
+
+The introduction chose Italy because of one cleavage in particular --- the
+North--South divide --- yet the results so far speak only in province-agnostic
+aggregates. This section reads them in the dimension that motivated the project.
+The 110 provinces are grouped into Italy's standard statistical macro-areas
+(\code{province\_mapping.PROVINCE\_TO\_MACROAREA}): the \nsProvNorth-province
+North (Nord-Ovest + Nord-Est), the \nsProvCentre-province Centre, and the
+\nsProvSouth-province South, or \emph{Mezzogiorno} (Sud + Isole). In the
+starting state the South's mean provincial GDP per capita is \nsBaseSouth{}
+against the North's \nsBaseNorth --- a South/North ratio of \nsBaseRatio, the
+divide the literature describes. Table~\ref{tab:northsouth} and
+Figure~\ref{fig:northsouth} report what each framework does to it.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Objective} & \textbf{North $\Delta$} & \textbf{South $\Delta$} &
+\textbf{South/North ratio} \\
+\midrule
+Baseline & --- & --- & \nsBaseRatio \\
+Utilitarian (total GDP) & \nsUtilNorth\% & \nsUtilSouth\% & \nsUtilRatio \\
+Rawlsian (maximin) & \nsRawlsNorth\% & \nsRawlsSouth\% & \nsRawlsRatio \\
+Rawlsian (CVaR) & \nsCvarNorth\% & \nsCvarSouth\% & \nsCvarRatio \\
+Egalitarian (Sen) & \nsEgalNorth\% & \nsEgalSouth\% & \nsEgalRatio \\
+Wellbeing & \nsWellNorth\% & \nsWellSouth\% & \nsWellRatio \\
+\bottomrule
+\end{tabular}
+\caption{North vs South response by ethical framework: mean provincial GDP per
+capita change from baseline for the North and the Mezzogiorno, and the resulting
+South/North ratio (higher = a narrower divide; baseline \nsBaseRatio). Means
+over \cmpSeeds{} seeds.}
+\label{tab:northsouth}
+\end{table}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.82\textwidth]{figures/north_south.pdf}
+\caption{North (blue) vs South/Mezzogiorno (red) mean provincial GDP per capita
+change from baseline, per framework (\cmpSeeds-seed means). A taller red bar
+than blue means the framework closes the divide by lifting the South; a deep
+blue trough means it closes the divide by pulling the North down.}
+\label{fig:northsouth}
+\end{figure}
+
+Four territorial signatures emerge, and they sharpen the abstract results:
+
+\begin{itemize}
+    \item \textbf{Utilitarianism and wellbeing leave the divide untouched.}
+    Both lift North and South by almost exactly the same proportion
+    (\nsUtilNorth\%/\nsUtilSouth\% and \nsWellNorth\%/\nsWellSouth\%), so the
+    South/North ratio barely moves from baseline (\nsUtilRatio, \nsWellRatio
+    vs.\ \nsBaseRatio). A distribution-blind rising tide raises the Mezzogiorno
+    in step with the North --- it neither closes nor widens the gap, it
+    \emph{photocopies} it onto a richer Italy.
+    \item \textbf{Maximin closes the divide by leveling the North down.}
+    It produces the most equal territorial outcome of any framework
+    (ratio \nsRawlsRatio) --- but the mechanism is the leveling-down objection
+    in geographic form: the North \emph{falls} \nsRawlsNorth\% while the South
+    barely moves (\nsRawlsSouth\%). The gap narrows because the top is cut, not
+    because the bottom rises.
+    \item \textbf{CVaR closes it more humanely.} The smoothed maximin reaches
+    essentially the same ratio (\nsCvarRatio) but the South actually
+    \emph{gains} (\nsCvarSouth\%) while the North falls less (\nsCvarNorth\%) ---
+    a strictly kinder route to the same territorial equality, and the
+    Mezzogiorno's only Rawlsian-family improvement.
+    \item \textbf{Sen welfare is the cohesion result.} Egalitarianism is the
+    one framework that narrows the divide (ratio \nsEgalRatio) \emph{while both
+    regions grow}: it lifts the South faster than the North
+    (\nsEgalSouth\% vs.\ \nsEgalNorth\%), the textbook definition of territorial
+    cohesion --- convergence without sacrifice.
+\end{itemize}
+
+Two honesty notes. First, the \emph{absolute} North--South gap in the twin is a
+property of the disaggregated starting data (GDP is one of the regionally
+disaggregated indicators; Section~\ref{sec:data}), so the numbers above are read
+as each framework's \emph{change} to the gap within the simulator, not as a
+measurement of Italy's real divide. Second, precisely because of that, the
+macro-area average over \nsProvNorth--\nsProvSouth{} provinces is a
+\emph{sounder} unit than the single worst-off province the headline metrics
+lean on: aggregating washes out the per-province disaggregation noise, so the
+territorial reading here is, if anything, more robust than the floor it
+complements.
 
 \subsection{The efficiency--equity frontier}
 

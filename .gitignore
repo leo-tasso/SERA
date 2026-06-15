@@ -5,3 +5,18 @@ dataBK/**
 **/agents/**
 .vscode/**
 **/node_modules/**
+
+# LaTeX build artifacts (keep report/*.tex and report/*.pdf)
+report/*.aux
+report/*.log
+report/*.out
+report/*.toc
+report/*.fls
+report/*.fdb_latexmk
+report/*.bbl
+report/*.blg
+report/*.synctex.gz
+report/*.lof
+report/*.lot
+report/*.bcf
+report/*.run.xml

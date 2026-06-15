@@ -233,6 +233,33 @@ PROVINCE_TO_REGION = {
     "VV": "Calabria",
 }
 
+# Italy's standard statistical macro-areas (ripartizioni geografiche), collapsed
+# to the three groups the North--South debate uses: North (Nord-Ovest +
+# Nord-Est), Centre (Centro), and South / Mezzogiorno (Sud + Isole). Used to
+# read the distributional results in territorial terms (sera report).
+REGION_TO_MACROAREA = {
+    # North
+    "Piemonte": "North", "Valle d'Aosta": "North", "Liguria": "North",
+    "Lombardia": "North", "Trentino-Alto Adige": "North", "Veneto": "North",
+    "Friuli-Venezia Giulia": "North", "Emilia-Romagna": "North",
+    # Centre
+    "Toscana": "Centre", "Umbria": "Centre", "Marche": "Centre", "Lazio": "Centre",
+    # South / Mezzogiorno
+    "Abruzzo": "South", "Molise": "South", "Campania": "South", "Puglia": "South",
+    "Basilicata": "South", "Calabria": "South", "Sicilia": "South", "Sardegna": "South",
+}
+
+PROVINCE_TO_MACROAREA = {
+    sigla: REGION_TO_MACROAREA[region]
+    for sigla, region in PROVINCE_TO_REGION.items()
+    if region in REGION_TO_MACROAREA
+}
+
+
+def macroarea_of(sigla: str) -> Optional[str]:
+    """Return 'North', 'Centre', or 'South' for a 2-letter province sigla."""
+    return PROVINCE_TO_MACROAREA.get(str(sigla).strip().upper())
+
 ISTAT_PROVINCE_PREFIX_TO_SIGLA = {
     "001": "TO",
     "002": "VC",
