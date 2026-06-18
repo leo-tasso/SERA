@@ -261,6 +261,7 @@ province-code normalization --- are covered by a \code{pytest} suite. The tests
 deliberately cover \emph{mechanics, not predictive accuracy}: asserting that the
 twin forecasts Italy correctly would be a claim the project explicitly refuses
 to make (Section~\ref{sec:uncertainty}).
+The tests are run automatically on every commit by GitHub Actions and gitlab CI, and the system refuses to run if any test fails.
 
 \section{The System}
 \label{sec:system}
@@ -459,7 +460,18 @@ rules. This is exactly the kind of statement a persuasive demo would omit; SERA
 treats stating it as part of the ethics of the system
 (Section~\ref{sec:uncertainty}). The constants are exposed as constructor
 parameters of the simulator precisely so that sensitivity analysis can re-run
-any scenario under weaker and stronger assumptions.
+any scenario under weaker and stronger assumptions. That the ML layer's
+contribution turns out to be small, and that much of the causal core rests on
+hand-written rules, is acceptable here: the goal of SERA is not to deliver a
+forecast-grade digital twin of Italy --- a task that would demand
+province-level policy data the historical panel simply does not contain
+(Section~\ref{sec:datareview}) --- but to provide a concrete, inspectable
+system on which to demonstrate and experiment with the ethics of decision-support
+modelling. A twin that is approximate but \emph{honest about where its structure
+comes from} serves that purpose better than a more elaborate model whose
+provenance is hidden; surfacing the limitation, rather than engineering it away,
+is itself the contribution.
+
 
 \subsection{What the data supports: estimating the twin's structure}
 \label{sec:datareview}
