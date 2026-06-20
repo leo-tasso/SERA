@@ -69,6 +69,8 @@ button:disabled {
 }
 
 .hero-copy {
+  display: flex;
+  flex-direction: column;
   padding: 22px 24px 24px;
 }
 
@@ -128,6 +130,25 @@ button:disabled {
 
 .hero-guide strong {
   color: var(--ink);
+  font-weight: 700;
+}
+
+/* Closing callout. margin-top:auto pins it to the bottom of the flex column so
+   the copy card fills its grid row height (matched to the taller controls
+   column) instead of leaving a gap. */
+.hero-tip {
+  margin: 18px 0 0;
+  margin-top: auto;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
+.hero-tip strong {
   font-weight: 700;
 }
 
@@ -616,6 +637,26 @@ button:disabled {
 .model-field input:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+/* Range sliders. Native range inputs carry default UA margins, so width:100%
+   alone spills a few pixels past the card's white border (most visible when the
+   card is wide, e.g. fullscreen) — pin margin to 0. The .model-field input rule
+   above is meant for the number fields, so strip its padding/border/background
+   from the sliders too. */
+.allocator-range,
+.model-field input[type="range"] {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  accent-color: var(--accent);
+}
+
+/* Keep the gap the original .allocator-range rule gave above its slider. */
+.allocator-range {
+  margin-top: 10px;
 }
 
 @media (max-width: 1200px) {

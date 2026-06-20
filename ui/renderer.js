@@ -1850,8 +1850,13 @@ function App() {
               <li><strong>Simulate the next year</strong> to advance the twin and read the result against the historical trend below.</li>
               <li><strong>Ask the AI for policies</strong>: choose a model and an ethical objective, then optimize. Candidates appear below with their trade-offs; nothing is applied until you adopt one.</li>
               <li><strong>Study the ethics</strong>: compare all frameworks side by side, or map the efficiency–equity frontier — both are what-if analyses that never touch the twin.</li>
+              <li><strong>Watch the resource pool</strong>: the meter on the right shows the share of the national budget still available. Overspending is reined in automatically and can draw down the reserve before it is refused.</li>
+              <li><strong>Read the chart</strong>: simulated years extend the historical series rather than replacing it, so every intervention stays legible against the long-run trend.</li>
             </ol>
           </div>
+          <p className="hero-tip">
+            <strong>Good to know:</strong> nothing here is destructive — simulations, optimizations and frontier maps are all what-if analyses on a copy of the twin. Use <strong>Reset province</strong> to return the allocators to their baseline at any time.
+          </p>
         </div>
         <div className="hero-controls">
           <div className="control-stack">
