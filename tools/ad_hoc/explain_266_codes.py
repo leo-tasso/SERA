@@ -5,7 +5,7 @@ import pandas as pd
 from src.sera.twin.data_loader import DataLoader
 from pathlib import Path
 
-loader = DataLoader(Path('data'))
+loader = DataLoader(Path("data"))
 
 print("=" * 90)
 print("WHAT DO THE 266 AREA CODES REPRESENT?")
@@ -13,8 +13,10 @@ print("=" * 90)
 print()
 
 # Load water_quality which has numeric codes
-df_water = loader.load_indicator('water_quality', 'environmental_quality')
-numeric_codes = sorted([c for c in df_water['area_code'].unique() if isinstance(c, str) and c.isdigit()])
+df_water = loader.load_indicator("water_quality", "environmental_quality")
+numeric_codes = sorted(
+    [c for c in df_water["area_code"].unique() if isinstance(c, str) and c.isdigit()]
+)
 
 print(f"Water quality indicator has {len(numeric_codes)} numeric area codes")
 print()

@@ -151,8 +151,14 @@ def main() -> None:
     ]
     for ax, (key, title, scale) in zip(axes, panels):
         xs, ys = series_to_xy(baseline[key])
-        ax.plot(xs, np.array(ys) * scale, color=COLORS["baseline"], ls="--",
-                lw=1.6, label=LABELS["baseline"])
+        ax.plot(
+            xs,
+            np.array(ys) * scale,
+            color=COLORS["baseline"],
+            ls="--",
+            lw=1.6,
+            label=LABELS["baseline"],
+        )
         for oid in present:
             years, matrix = stack_series(per_seed, oid, key)
             if matrix.size == 0:
@@ -233,12 +239,18 @@ def main() -> None:
         width = min(len(c) for c in curves)
         matrix = np.array([c[:width] for c in curves], dtype=float)
         mean = matrix.mean(axis=0)
-        ax.plot(range(width), mean, color=COLORS[oid], lw=1.8, marker="o",
-                markersize=3, label=LABELS[oid])
+        ax.plot(
+            range(width),
+            mean,
+            color=COLORS[oid],
+            lw=1.8,
+            marker="o",
+            markersize=3,
+            label=LABELS[oid],
+        )
         if len(curves) > 1:
             std = matrix.std(axis=0)
-            ax.fill_between(range(width), mean - std, mean + std,
-                            color=COLORS[oid], alpha=0.12)
+            ax.fill_between(range(width), mean - std, mean + std, color=COLORS[oid], alpha=0.12)
     ax.set_xlabel("ES iteration", fontsize=9)
     ax.set_ylabel("Cumulative objective improvement over untrained (%)", fontsize=9)
     ax.tick_params(labelsize=8)
@@ -261,11 +273,26 @@ def main() -> None:
 
     gdp, gini_vals, worst = pareto_arrays(pareto)
     fig, ax = plt.subplots(figsize=(7.2, 4.4))
-    ax.scatter(gdp, worst, color="#1f77b4", s=55, edgecolors="black",
-               linewidths=0.4, zorder=3, label="Non-dominated uniform policies")
+    ax.scatter(
+        gdp,
+        worst,
+        color="#1f77b4",
+        s=55,
+        edgecolors="black",
+        linewidths=0.4,
+        zorder=3,
+        label="Non-dominated uniform policies",
+    )
     pb = pareto["baseline"]
-    ax.scatter([pb["finalGdpTotal"] * 1e-3], [pb["worstProvinceGdp"]],
-               marker="X", color="#555555", s=110, zorder=4, label="Baseline")
+    ax.scatter(
+        [pb["finalGdpTotal"] * 1e-3],
+        [pb["worstProvinceGdp"]],
+        marker="X",
+        color="#555555",
+        s=110,
+        zorder=4,
+        label="Baseline",
+    )
     ax.set_xlabel("Total national GDP ($\\times 10^3$, model units, final year)", fontsize=9)
     ax.set_ylabel("Worst-off province GDP p.c. (model units, final year)", fontsize=9)
     ax.tick_params(labelsize=8)
@@ -283,14 +310,29 @@ def main() -> None:
     if clustered is not None:
         cgdp, cgini, cworst = pareto_arrays(clustered)
         fig, ax = plt.subplots(figsize=(7.2, 4.4))
-        scatter = ax.scatter(cgdp, cgini, c=cworst, cmap="viridis", s=60,
-                             edgecolors="black", linewidths=0.4, zorder=3)
+        scatter = ax.scatter(
+            cgdp,
+            cgini,
+            c=cworst,
+            cmap="viridis",
+            s=60,
+            edgecolors="black",
+            linewidths=0.4,
+            zorder=3,
+        )
         cb = fig.colorbar(scatter, ax=ax)
         cb.set_label("Worst-off province GDP p.c.", fontsize=8)
         cb.ax.tick_params(labelsize=7)
         pb = clustered["baseline"]
-        ax.scatter([pb["finalGdpTotal"] * 1e-3], [pb["finalGini"]],
-                   marker="X", color="#d62728", s=120, zorder=4, label="Baseline")
+        ax.scatter(
+            [pb["finalGdpTotal"] * 1e-3],
+            [pb["finalGini"]],
+            marker="X",
+            color="#d62728",
+            s=120,
+            zorder=4,
+            label="Baseline",
+        )
         ax.set_xlabel("Total national GDP ($\\times 10^3$, model units, final year)", fontsize=9)
         ax.set_ylabel("Inter-provincial Gini (final year)", fontsize=9)
         ax.tick_params(labelsize=8)
@@ -333,14 +375,18 @@ def main() -> None:
         gdp_v = final_values(per_seed, oid, "finalGdpTotal")
         gini_v = final_values(per_seed, oid, "finalGini")
         worst_v = final_values(per_seed, oid, "worstProvinceGdp")
-        impr_v = np.array([
-            (
-                {r["objectiveId"]: r for r in e["results"]}.get(oid, {})
-                .get("trainInfo", {})
-                .get("improvement_pct", 0.0)
-            )
-            for e in per_seed
-        ], dtype=float)
+        impr_v = np.array(
+            [
+                (
+                    {r["objectiveId"]: r for r in e["results"]}
+                    .get(oid, {})
+                    .get("trainInfo", {})
+                    .get("improvement_pct", 0.0)
+                )
+                for e in per_seed
+            ],
+            dtype=float,
+        )
 
         macro(f"cmp{s}Gdp", fmt_gdp(gdp_v.mean()))
         macro(f"cmp{s}GdpStd", fmt_gdp(gdp_v.std()))
@@ -365,11 +411,15 @@ def main() -> None:
 
     worst_by = {oid: final_values(per_seed, oid, "worstProvinceGdp") for oid in present}
     if "egalitarian" in worst_by and "utilitarian" in worst_by:
-        macro("sigEgalUtilFloor", yesno(bootstrap_diff_significant(
-            worst_by["egalitarian"], worst_by["utilitarian"])))
+        macro(
+            "sigEgalUtilFloor",
+            yesno(bootstrap_diff_significant(worst_by["egalitarian"], worst_by["utilitarian"])),
+        )
     if "cvar" in worst_by and "rawlsian" in worst_by:
-        macro("sigCvarRawlsFloor", yesno(bootstrap_diff_significant(
-            worst_by["cvar"], worst_by["rawlsian"])))
+        macro(
+            "sigCvarRawlsFloor",
+            yesno(bootstrap_diff_significant(worst_by["cvar"], worst_by["rawlsian"])),
+        )
 
     # Uniform Pareto macros (unchanged names).
     macro("parPoints", len(pareto["points"]))
@@ -406,8 +456,10 @@ def main() -> None:
         macro("provMeasured", counts.get("measured", 0))
         macro("provDisaggNational", counts.get("disaggregated_national", 0))
         macro("provDisaggRegional", counts.get("disaggregated_regional", 0))
-        macro("provDisaggTotal",
-              counts.get("disaggregated_national", 0) + counts.get("disaggregated_regional", 0))
+        macro(
+            "provDisaggTotal",
+            counts.get("disaggregated_national", 0) + counts.get("disaggregated_regional", 0),
+        )
         macro("provGdp", provenance.get("gdp_per_capita", "unknown").replace("_", " "))
 
     # Twin-structure / data-review macros (improvement #3 + coupling wiring),
@@ -474,10 +526,24 @@ def main() -> None:
     fig, ax = plt.subplots(figsize=(8.5, 4.0))
     xs_ns = np.arange(len(labels_ns))
     w = 0.38
-    ax.bar(xs_ns - w / 2, north_d, w, label=f"North ({area_counts['North']} prov.)",
-           color="#1f77b4", edgecolor="black", linewidth=0.4)
-    ax.bar(xs_ns + w / 2, south_d, w, label=f"South / Mezzogiorno ({area_counts['South']} prov.)",
-           color="#d62728", edgecolor="black", linewidth=0.4)
+    ax.bar(
+        xs_ns - w / 2,
+        north_d,
+        w,
+        label=f"North ({area_counts['North']} prov.)",
+        color="#1f77b4",
+        edgecolor="black",
+        linewidth=0.4,
+    )
+    ax.bar(
+        xs_ns + w / 2,
+        south_d,
+        w,
+        label=f"South / Mezzogiorno ({area_counts['South']} prov.)",
+        color="#d62728",
+        edgecolor="black",
+        linewidth=0.4,
+    )
     ax.axhline(0, color="#555", lw=0.8)
     ax.set_xticks(xs_ns)
     ax.set_xticklabels([LABELS[o] for o in labels_ns], fontsize=8)
@@ -497,23 +563,43 @@ def main() -> None:
         sw = json.loads(sweep_path.read_text())
         rhos = [p["rho"] for p in sw["points"]]
         b = sw["baseline"]
-        gdp_d = [100 * (p["gdp_mean"] - b["finalGdpTotal"]) / b["finalGdpTotal"] for p in sw["points"]]
-        worst_d = [100 * (p["worst_mean"] - b["worstProvinceGdp"]) / b["worstProvinceGdp"] for p in sw["points"]]
+        gdp_d = [
+            100 * (p["gdp_mean"] - b["finalGdpTotal"]) / b["finalGdpTotal"] for p in sw["points"]
+        ]
+        worst_d = [
+            100 * (p["worst_mean"] - b["worstProvinceGdp"]) / b["worstProvinceGdp"]
+            for p in sw["points"]
+        ]
         ginis = [p["gini_mean"] for p in sw["points"]]
         fig, axes = plt.subplots(1, 3, figsize=(13, 3.6))
         for ax, ys, title in zip(
-            axes, [gdp_d, ginis, worst_d],
-            ["Total GDP vs baseline (%)", "Inter-provincial Gini", "Worst-off province vs baseline (%)"],
+            axes,
+            [gdp_d, ginis, worst_d],
+            [
+                "Total GDP vs baseline (%)",
+                "Inter-provincial Gini",
+                "Worst-off province vs baseline (%)",
+            ],
         ):
             ax.plot(rhos, ys, "-o", color="#7b3294", lw=1.8, markersize=4)
             ax.set_xlabel(r"prioritarian concavity $\rho$", fontsize=9)
             ax.set_title(title, fontsize=9)
             ax.grid(alpha=0.25)
             ax.tick_params(labelsize=8)
-        axes[0].annotate("utilitarian\nend", (rhos[0], gdp_d[0]), fontsize=7,
-                         textcoords="offset points", xytext=(6, -2))
-        axes[0].annotate("maximin\nend", (rhos[-1], gdp_d[-1]), fontsize=7,
-                         textcoords="offset points", xytext=(-30, 6))
+        axes[0].annotate(
+            "utilitarian\nend",
+            (rhos[0], gdp_d[0]),
+            fontsize=7,
+            textcoords="offset points",
+            xytext=(6, -2),
+        )
+        axes[0].annotate(
+            "maximin\nend",
+            (rhos[-1], gdp_d[-1]),
+            fontsize=7,
+            textcoords="offset points",
+            xytext=(-30, 6),
+        )
         fig.tight_layout()
         fig.savefig(FIG_DIR / "prioritarian_sweep.pdf")
         plt.close(fig)
@@ -567,10 +653,20 @@ def main() -> None:
         tr = json.loads(trans_path.read_text())
         by_id = {r["modelId"]: r for r in tr["results"]}
         neural_score = (by_id.get("neural") or {}).get("score_mean")
-        badge_text = {"white-box": "white box", "gray-box": "gray box",
-                      "black-box": "black box", None: "black box"}
-        tok = {"neural": "Neural", "linear": "Linear", "rules": "Rules",
-               "cluster_cem": "Cluster", "uniform_cem": "UnifCem", "uniform_bayes": "UnifBayes"}
+        badge_text = {
+            "white-box": "white box",
+            "gray-box": "gray box",
+            "black-box": "black box",
+            None: "black box",
+        }
+        tok = {
+            "neural": "Neural",
+            "linear": "Linear",
+            "rules": "Rules",
+            "cluster_cem": "Cluster",
+            "uniform_cem": "UnifCem",
+            "uniform_bayes": "UnifBayes",
+        }
         for mid, t in tok.items():
             r = by_id.get(mid)
             if not r or r.get("score_mean") is None:
@@ -606,13 +702,23 @@ def main() -> None:
         su = json.loads(suff_path.read_text())
         th = [p["theta"] for p in su["points"]]
         b = su["baseline"]
-        gdp_d = [100 * (p["gdp_mean"] - b["finalGdpTotal"]) / b["finalGdpTotal"] for p in su["points"]]
-        worst_d = [100 * (p["worst_mean"] - b["worstProvinceGdp"]) / b["worstProvinceGdp"] for p in su["points"]]
+        gdp_d = [
+            100 * (p["gdp_mean"] - b["finalGdpTotal"]) / b["finalGdpTotal"] for p in su["points"]
+        ]
+        worst_d = [
+            100 * (p["worst_mean"] - b["worstProvinceGdp"]) / b["worstProvinceGdp"]
+            for p in su["points"]
+        ]
         ginis = [p["gini_mean"] for p in su["points"]]
         fig, axes = plt.subplots(1, 3, figsize=(13, 3.6))
         for ax, ys, title in zip(
-            axes, [gdp_d, ginis, worst_d],
-            ["Total GDP vs baseline (%)", "Inter-provincial Gini", "Worst-off province vs baseline (%)"],
+            axes,
+            [gdp_d, ginis, worst_d],
+            [
+                "Total GDP vs baseline (%)",
+                "Inter-provincial Gini",
+                "Worst-off province vs baseline (%)",
+            ],
         ):
             ax.plot(th, ys, "-o", color="#2c7fb8", lw=1.8, markersize=4)
             ax.set_xlabel(r"sufficiency threshold $\theta$ ($\times$ start median)", fontsize=9)
@@ -637,14 +743,18 @@ def main() -> None:
 
     # Console summary.
     print("\n=== SUMMARY (mean over %d seeds) ===" % len(seeds))
-    print(f"baseline: GDP {fmt_gdp(base_gdp)}  Gini {fmt_gini(baseline['finalGini'])}  "
-          f"worst {fmt_k(base_worst)}")
+    print(
+        f"baseline: GDP {fmt_gdp(base_gdp)}  Gini {fmt_gini(baseline['finalGini'])}  "
+        f"worst {fmt_k(base_worst)}"
+    )
     for oid in present:
         gdp_v = final_values(per_seed, oid, "finalGdpTotal")
         gini_v = final_values(per_seed, oid, "finalGini")
         worst_v = final_values(per_seed, oid, "worstProvinceGdp")
-        print(f"{oid:12s}: GDP {fmt_gdp(gdp_v.mean())}+-{fmt_gdp(gdp_v.std())}  "
-              f"Gini {fmt_gini(gini_v.mean())}  worst {fmt_k(worst_v.mean())}+-{fmt_k(worst_v.std())}")
+        print(
+            f"{oid:12s}: GDP {fmt_gdp(gdp_v.mean())}+-{fmt_gdp(gdp_v.std())}  "
+            f"Gini {fmt_gini(gini_v.mean())}  worst {fmt_k(worst_v.mean())}+-{fmt_k(worst_v.std())}"
+        )
     if clustered is not None:
         print(f"clustered pareto Gini span: {cgini.min():.3f}..{cgini.max():.3f}")
     if provenance:

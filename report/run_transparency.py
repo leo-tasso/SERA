@@ -49,11 +49,17 @@ def main() -> None:
         for seed in SEEDS:
             t0 = time.time()
             print(f"=== {model_id} seed={seed} ===", file=sys.stderr, flush=True)
-            res = bridge.optimize_policy({
-                "currentStateRows": rows, "currentYear": current_year,
-                "horizon": HORIZON, "iterations": ITERATIONS,
-                "modelId": model_id, "objectiveId": OBJECTIVE, "seed": seed,
-            })
+            res = bridge.optimize_policy(
+                {
+                    "currentStateRows": rows,
+                    "currentYear": current_year,
+                    "horizon": HORIZON,
+                    "iterations": ITERATIONS,
+                    "modelId": model_id,
+                    "objectiveId": OBJECTIVE,
+                    "seed": seed,
+                }
+            )
             info = res.get("trainInfo") or {}
             explain = res.get("explainability") or explain
             full = next((c for c in res.get("candidates", []) if c.get("id") == "full"), None)
@@ -67,21 +73,32 @@ def main() -> None:
                     ginis.append(float(full["finalGini"]))
                     worsts.append(float(full["worstProvinceGdp"]))
             print(f"    done in {time.time() - t0:.0f}s", file=sys.stderr, flush=True)
-        results.append({
-            "modelId": model_id,
-            "explainability": explain,
-            "score_mean": float(np.mean(scores)) if scores else None,
-            "score_std": float(np.std(scores)) if scores else None,
-            "improvement_mean": float(np.mean(imprs)) if imprs else None,
-            "gdp_mean": float(np.mean(gdps)) if gdps else None,
-            "gini_mean": float(np.mean(ginis)) if ginis else None,
-            "worst_mean": float(np.mean(worsts)) if worsts else None,
-        })
+        results.append(
+            {
+                "modelId": model_id,
+                "explainability": explain,
+                "score_mean": float(np.mean(scores)) if scores else None,
+                "score_std": float(np.std(scores)) if scores else None,
+                "improvement_mean": float(np.mean(imprs)) if imprs else None,
+                "gdp_mean": float(np.mean(gdps)) if gdps else None,
+                "gini_mean": float(np.mean(ginis)) if ginis else None,
+                "worst_mean": float(np.mean(worsts)) if worsts else None,
+            }
+        )
 
-    (out_dir / "transparency.json").write_text(json.dumps({
-        "objective": OBJECTIVE, "horizon": HORIZON, "iterations": ITERATIONS,
-        "seeds": SEEDS, "finalYear": current_year + HORIZON, "results": results,
-    }, indent=2))
+    (out_dir / "transparency.json").write_text(
+        json.dumps(
+            {
+                "objective": OBJECTIVE,
+                "horizon": HORIZON,
+                "iterations": ITERATIONS,
+                "seeds": SEEDS,
+                "finalYear": current_year + HORIZON,
+                "results": results,
+            },
+            indent=2,
+        )
+    )
     print("TRANSPARENCY DONE", flush=True)
 
 

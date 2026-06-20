@@ -87,24 +87,36 @@ def main() -> None:
 
     print("\n=== TWIN STRUCTURE: estimated vs hand-written ===\n")
     lg = findings["lever_granularity"]
-    print(f"Levers: {lg['national_or_regional_only']}/{lg['levers']} are national/regional-only "
-          f"(0..{lg['province_measured']} province-measured) -> provincial lever response is unidentifiable.\n")
+    print(
+        f"Levers: {lg['national_or_regional_only']}/{lg['levers']} are national/regional-only "
+        f"(0..{lg['province_measured']} province-measured) -> provincial lever response is unidentifiable.\n"
+    )
     for level in ("province", "region"):
         r = findings[level]
         print(f"[{level}] {r['entities']} entities x {r['years']} years")
-        print(f"  indicator->indicator SIGN agreement vs hand-written graph "
-              f"({r['edges_scored']} in-panel edges):")
-        print(f"      pooled (production spec) {r['sign_agreement_pooled']:.0%}   "
-              f"with fixed effects {r['sign_agreement_fe']:.0%}")
-        print(f"  edge-set recovery: precision {r['edge_precision_fe']:.2f}  recall {r['edge_recall_fe']:.2f}")
-        print(f"  honest validation: temporal-holdout R2 {r['temporal_r2_pooled']:+.2f} "
-              f"vs leaky random-split R2 {r['random_r2_pooled']:+.2f}; "
-              f"direction accuracy {r['direction_accuracy']:.0%} (cutoff {r['cutoff_year']})")
+        print(
+            f"  indicator->indicator SIGN agreement vs hand-written graph "
+            f"({r['edges_scored']} in-panel edges):"
+        )
+        print(
+            f"      pooled (production spec) {r['sign_agreement_pooled']:.0%}   "
+            f"with fixed effects {r['sign_agreement_fe']:.0%}"
+        )
+        print(
+            f"  edge-set recovery: precision {r['edge_precision_fe']:.2f}  recall {r['edge_recall_fe']:.2f}"
+        )
+        print(
+            f"  honest validation: temporal-holdout R2 {r['temporal_r2_pooled']:+.2f} "
+            f"vs leaky random-split R2 {r['random_r2_pooled']:+.2f}; "
+            f"direction accuracy {r['direction_accuracy']:.0%} (cutoff {r['cutoff_year']})"
+        )
         if r["contradicted_edges"]:
             print("  hand-written edges the data contradicts:")
             for e in r["contradicted_edges"]:
-                print(f"      {e['source']} -> {e['target']}: documented "
-                      f"{'+' if e['documented_sign'] > 0 else '-'}, data {e['data_coef']:+.3f}")
+                print(
+                    f"      {e['source']} -> {e['target']}: documented "
+                    f"{'+' if e['documented_sign'] > 0 else '-'}, data {e['data_coef']:+.3f}"
+                )
         print()
     print(f"Findings written to {OUT.relative_to(REPO_ROOT)}")
 

@@ -17,10 +17,10 @@ def test_areas_are_the_three_groups():
 
 
 def test_known_provinces():
-    assert macroarea_of("MI") == "North"   # Milano, Lombardia
+    assert macroarea_of("MI") == "North"  # Milano, Lombardia
     assert macroarea_of("RM") == "Centre"  # Roma, Lazio
-    assert macroarea_of("NA") == "South"   # Napoli, Campania
-    assert macroarea_of("PA") == "South"   # Palermo, Sicilia (Isole)
+    assert macroarea_of("NA") == "South"  # Napoli, Campania
+    assert macroarea_of("PA") == "South"  # Palermo, Sicilia (Isole)
     assert macroarea_of("mi") is not None  # case-insensitive
 
 

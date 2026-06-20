@@ -61,10 +61,19 @@ def main() -> None:
             print(f"    done in {time.time() - t0:.0f}s", file=sys.stderr, flush=True)
         by_mode[mode] = {"baseline": baseline, "perSeed": per_seed}
 
-    (out_dir / "ablation.json").write_text(json.dumps({
-        "modes": MODES, "seeds": SEEDS, "objectiveIds": OBJECTIVE_IDS,
-        "horizon": HORIZON, "finalYear": current_year + HORIZON, "byMode": by_mode,
-    }, indent=2))
+    (out_dir / "ablation.json").write_text(
+        json.dumps(
+            {
+                "modes": MODES,
+                "seeds": SEEDS,
+                "objectiveIds": OBJECTIVE_IDS,
+                "horizon": HORIZON,
+                "finalYear": current_year + HORIZON,
+                "byMode": by_mode,
+            },
+            indent=2,
+        )
+    )
     print("ABLATION DONE", flush=True)
 
 

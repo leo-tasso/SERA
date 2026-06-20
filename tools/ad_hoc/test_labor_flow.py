@@ -6,8 +6,8 @@ import pandas as pd
 import io
 
 # Test unemployment regional data
-url = 'https://esploradati.istat.it/SDMXWS/rest/data/151_929_DF_DCCV_DISOCCUPT1_5?lastNObservations=100'
-headers = {'Accept': 'application/vnd.sdmx.data+csv;version=1.0.0'}
+url = "https://esploradati.istat.it/SDMXWS/rest/data/151_929_DF_DCCV_DISOCCUPT1_5?lastNObservations=100"
+headers = {"Accept": "application/vnd.sdmx.data+csv;version=1.0.0"}
 
 print("Testing unemployment regional data (151_929_DF_DCCV_DISOCCUPT1_5)...")
 print("=" * 70)

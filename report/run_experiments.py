@@ -34,8 +34,8 @@ sys.path.insert(0, str(REPO_ROOT / "ui"))
 import backend_bridge as bridge  # noqa: E402
 from sera.twin.data_loader import DataLoader  # noqa: E402
 
-HORIZON = 10        # simulated years
-ITERATIONS = 6      # training iterations per objective (compare) / generations (pareto)
+HORIZON = 10  # simulated years
+ITERATIONS = 6  # training iterations per objective (compare) / generations (pareto)
 PARETO_POPSIZE = 12
 PARETO_CLUSTERS = 4  # per-cluster Pareto: how many regional packages to evolve
 MODEL_ID = "neural"  # the equity dashboard's default policy model

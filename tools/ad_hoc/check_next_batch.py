@@ -4,22 +4,22 @@
 from pathlib import Path
 import pandas as pd
 
-DATA_DIR = Path('data')
+DATA_DIR = Path("data")
 
 # Candidates to check
 candidates = [
-    ('gini_coefficient', 'economic'),
-    ('average_wages', 'labor'),
-    ('exports_imports', 'economic'),
-    ('fdi', 'economic'),
-    ('house_prices', 'housing'),
-    ('construction_activity', 'housing'),
-    ('air_quality', 'environment'),
-    ('sustainability', 'environment'),
-    ('energy_consumption_per_capita', 'energy_resources'),
-    ('car_ownership_density', 'transportation_mobility'),
-    ('adult_learning', 'education'),
-    ('startups', 'innovation_infrastructure'),
+    ("gini_coefficient", "economic"),
+    ("average_wages", "labor"),
+    ("exports_imports", "economic"),
+    ("fdi", "economic"),
+    ("house_prices", "housing"),
+    ("construction_activity", "housing"),
+    ("air_quality", "environment"),
+    ("sustainability", "environment"),
+    ("energy_consumption_per_capita", "energy_resources"),
+    ("car_ownership_density", "transportation_mobility"),
+    ("adult_learning", "education"),
+    ("startups", "innovation_infrastructure"),
 ]
 
 print("=" * 90)
@@ -32,21 +32,23 @@ for indicator, category in candidates:
     if not indicator_dir.exists():
         print(f"[NO DATA] {indicator:40s} ({category})")
         continue
-    
+
     csv_files = list(indicator_dir.glob("*.csv"))
     if not csv_files:
         print(f"[EMPTY]   {indicator:40s} ({category})")
         continue
-    
+
     latest_file = sorted(csv_files)[-1]
     try:
         df = pd.read_csv(latest_file)
-        n_areas = df['area_code'].nunique() if 'area_code' in df.columns else 0
+        n_areas = df["area_code"].nunique() if "area_code" in df.columns else 0
         n_years = len(df) // max(n_areas, 1) if n_areas > 0 else len(df)
         n_rows = len(df)
-        
+
         status = "STRONG" if n_areas >= 100 and n_years >= 8 else "LIMITED"
-        print(f"[{status:6s}]   {indicator:40s} | {n_areas:3d} areas, {n_years:2d} yrs, {n_rows:5d} rows")
+        print(
+            f"[{status:6s}]   {indicator:40s} | {n_areas:3d} areas, {n_years:2d} yrs, {n_rows:5d} rows"
+        )
     except Exception as e:
         print(f"[ERROR]   {indicator:40s} | {str(e)[:40]}")
 

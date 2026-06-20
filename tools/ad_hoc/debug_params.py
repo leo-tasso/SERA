@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 """Debug parameter loading."""
+
 import sys
 from pathlib import Path
 

@@ -53,25 +53,42 @@ def main() -> None:
         for seed in SEEDS:
             t0 = time.time()
             print(f"=== sufficientarian theta={theta} seed={seed} ===", file=sys.stderr, flush=True)
-            res = bridge.compare_objectives({
-                **base_payload, "seed": seed,
-                "objectiveParams": {"sufficientarian": {"threshold_ratio": theta}},
-            })
+            res = bridge.compare_objectives(
+                {
+                    **base_payload,
+                    "seed": seed,
+                    "objectiveParams": {"sufficientarian": {"threshold_ratio": theta}},
+                }
+            )
             if baseline is None:
                 baseline = res["baseline"]
             r = res["results"][0]
-            gdps.append(r["finalGdpTotal"]); ginis.append(r["finalGini"]); worsts.append(r["worstProvinceGdp"])
+            gdps.append(r["finalGdpTotal"])
+            ginis.append(r["finalGini"])
+            worsts.append(r["worstProvinceGdp"])
             print(f"    done in {time.time() - t0:.0f}s", file=sys.stderr, flush=True)
-        points.append({
-            "theta": theta,
-            "gdp_mean": float(np.mean(gdps)), "gini_mean": float(np.mean(ginis)),
-            "worst_mean": float(np.mean(worsts)),
-        })
+        points.append(
+            {
+                "theta": theta,
+                "gdp_mean": float(np.mean(gdps)),
+                "gini_mean": float(np.mean(ginis)),
+                "worst_mean": float(np.mean(worsts)),
+            }
+        )
 
-    (out_dir / "sufficientarian_sweep.json").write_text(json.dumps({
-        "thetas": THETAS, "seeds": SEEDS, "horizon": HORIZON,
-        "finalYear": current_year + HORIZON, "baseline": baseline, "points": points,
-    }, indent=2))
+    (out_dir / "sufficientarian_sweep.json").write_text(
+        json.dumps(
+            {
+                "thetas": THETAS,
+                "seeds": SEEDS,
+                "horizon": HORIZON,
+                "finalYear": current_year + HORIZON,
+                "baseline": baseline,
+                "points": points,
+            },
+            indent=2,
+        )
+    )
     print("SUFFICIENTARIAN SWEEP DONE", flush=True)
 
 

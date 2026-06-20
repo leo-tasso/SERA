@@ -4,7 +4,7 @@
 import joblib
 
 # Load trained models
-trainer = joblib.load('twin_models_full.joblib')
+trainer = joblib.load("twin_models_full.joblib")
 
 print("=" * 90)
 print("SERA DIGITAL TWIN - 20 Indicator Model with Cross-Effects")

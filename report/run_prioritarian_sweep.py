@@ -52,11 +52,13 @@ def main() -> None:
         for seed in SEEDS:
             t0 = time.time()
             print(f"=== prioritarian rho={rho} seed={seed} ===", file=sys.stderr, flush=True)
-            res = bridge.compare_objectives({
-                **base_payload,
-                "seed": seed,
-                "objectiveParams": {"prioritarian": {"rho": rho}},
-            })
+            res = bridge.compare_objectives(
+                {
+                    **base_payload,
+                    "seed": seed,
+                    "objectiveParams": {"prioritarian": {"rho": rho}},
+                }
+            )
             if baseline is None:
                 baseline = res["baseline"]
             r = res["results"][0]
@@ -64,17 +66,31 @@ def main() -> None:
             ginis.append(r["finalGini"])
             worsts.append(r["worstProvinceGdp"])
             print(f"    done in {time.time() - t0:.0f}s", file=sys.stderr, flush=True)
-        points.append({
-            "rho": rho,
-            "gdp_mean": float(np.mean(gdps)), "gdp_std": float(np.std(gdps)),
-            "gini_mean": float(np.mean(ginis)), "gini_std": float(np.std(ginis)),
-            "worst_mean": float(np.mean(worsts)), "worst_std": float(np.std(worsts)),
-        })
+        points.append(
+            {
+                "rho": rho,
+                "gdp_mean": float(np.mean(gdps)),
+                "gdp_std": float(np.std(gdps)),
+                "gini_mean": float(np.mean(ginis)),
+                "gini_std": float(np.std(ginis)),
+                "worst_mean": float(np.mean(worsts)),
+                "worst_std": float(np.std(worsts)),
+            }
+        )
 
-    (out_dir / "prioritarian_sweep.json").write_text(json.dumps({
-        "rhos": RHOS, "seeds": SEEDS, "horizon": HORIZON,
-        "finalYear": current_year + HORIZON, "baseline": baseline, "points": points,
-    }, indent=2))
+    (out_dir / "prioritarian_sweep.json").write_text(
+        json.dumps(
+            {
+                "rhos": RHOS,
+                "seeds": SEEDS,
+                "horizon": HORIZON,
+                "finalYear": current_year + HORIZON,
+                "baseline": baseline,
+                "points": points,
+            },
+            indent=2,
+        )
+    )
     print("PRIORITARIAN SWEEP DONE", flush=True)
 
 

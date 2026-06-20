@@ -41,7 +41,11 @@ package-linux:
   script:
     - cd ui
     - npm install
-    - npx --no-install electron-builder --linux AppImage deb --publish never
+    # The installer name comes from electron-builder's ${version}, which it reads
+    # from package.json. Override it with the tag (vX.Y.Z -> X.Y.Z) so the
+    # artifacts track the release tag instead of the hard-coded package.json value.
+    - VERSION="${CI_COMMIT_TAG#v}"
+    - npx --no-install electron-builder --linux AppImage deb --publish never -c.extraMetadata.version="$VERSION"
     # Job artifacts have a hard size cap on this instance and the Electron
     # installers blow past it (413 Too Large), so the binaries go to the generic
     # Package Registry; only their filenames are passed on (via dotenv) so the
