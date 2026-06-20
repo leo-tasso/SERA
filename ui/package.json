@@ -1,7 +1,7 @@
 {
   "name": "sera-ui",
   "productName": "SERA Control Room",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "private": true,
   "description": "SERA — ethically-governed digital twin of the Italian provinces (control-room UI).",
   "author": "Leonardo Tassinari <leonardo.tassinari6@studio.unibo.it>",

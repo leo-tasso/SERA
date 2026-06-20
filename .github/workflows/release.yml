@@ -40,22 +40,22 @@ jobs:
         # ui/package-lock.json to switch this back to `npm ci`.
         run: npm install
 
-      - name: Derive version from tag
+      - name: Set version from tag
         # The installer name comes from electron-builder's ${version}, read from
-        # package.json. Derive it from the tag (vX.Y.Z -> X.Y.Z) so artifacts track
-        # the release tag; fall back to package.json for manual workflow_dispatch.
+        # package.json. Rewrite it from the tag (vX.Y.Z -> X.Y.Z) so artifacts
+        # track the release tag. No-op for manual workflow_dispatch (no tag).
         # `bash` is available on every runner (incl. Windows) so this is portable.
         shell: bash
         run: |
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            echo "EB_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
-          else
-            echo "EB_VERSION=$(node -p "require('./package.json').version")" >> "$GITHUB_ENV"
+            VERSION="${GITHUB_REF_NAME#v}"
+            node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json'));p.version=process.argv[1];fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n')" "$VERSION"
+            echo "Set package.json version to $VERSION"
           fi
 
       - name: Build installers
         # electron-builder reads the per-OS targets from package.json "build".
-        run: npx --no-install electron-builder --publish never -c.extraMetadata.version=${{ env.EB_VERSION }}
+        run: npx --no-install electron-builder --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
