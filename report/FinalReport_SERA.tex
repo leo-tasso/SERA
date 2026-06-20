@@ -16,6 +16,7 @@
 \usepackage{hyperref}
 \hypersetup{colorlinks=true, linkcolor=black, citecolor=black, urlcolor=blue}
 \usepackage{caption}
+\usepackage{subcaption}
 \captionsetup{font=small, labelfont=bf}
 \usepackage[normalem]{ulem}
 
@@ -252,7 +253,110 @@ network requests at runtime. The Electron main process talks to Python through a
 bridge script (\code{ui/backend\_bridge.py}), one process per command
 (\code{bootstrap}, \code{province-trends}, \code{simulate-next-year},
 \code{optimize-policy}, \code{compare-objectives}, \code{pareto-front}),
-streaming structured progress messages over \code{stderr}.
+streaming structured progress messages over \code{stderr}. The desktop build
+ships a self-contained backend: \code{backend\_bridge.py} is frozen with
+PyInstaller and bundled with the trained twin and data, so the installed app
+needs no Python on the target machine.
+
+\begin{figure}[tbp]
+  \centering
+  \includegraphics[width=\textwidth]{figures/ui/overview.png}
+  \caption{The SERA control room. The left column documents the workflow and key
+  terms; the right column is the command panel --- the simulation year and the
+  national \emph{resource-pool} meter, the policy-model and ethical-objective
+  selectors, and the four actions: advance the twin one year, optimize for the
+  chosen objective, compare all frameworks, and map the efficiency--equity
+  frontier.}
+  \label{fig:ui-overview}
+\end{figure}
+
+Figure~\ref{fig:ui-overview} shows the full control room. Selecting a province on
+the choropleth (Figure~\ref{fig:ui-workspace}a) opens its allocator editor
+(Figure~\ref{fig:ui-workspace}b), one slider per policy lever. Spending
+(monetary) levers carry a blue accent (Figure~\ref{fig:ui-levers}) that sets them
+apart from tax-rate levers, because they draw on the shared national budget that
+the resource meter tracks.
+
+\begin{figure}[tbp]
+  \centering
+  \begin{subfigure}{0.46\textwidth}
+    \centering\includegraphics[width=\textwidth]{figures/ui/map.png}
+    \caption{Province selection}
+  \end{subfigure}\hfill
+  \begin{subfigure}{0.46\textwidth}
+    \centering\includegraphics[width=\textwidth]{figures/ui/allocator.png}
+    \caption{Allocator editor for the selected province}
+  \end{subfigure}
+  \caption{The province workspace. Clicking a province on the GeoJSON map (a)
+  loads its current indicators and policy levers (b) for editing before a run.}
+  \label{fig:ui-workspace}
+\end{figure}
+
+\begin{figure}[tbp]
+  \centering
+  \includegraphics[width=0.6\textwidth]{figures/ui/allocator_shadow.png}
+  \caption{Lever detail. Tax-rate levers (top) are plain; spending levers such as
+  the healthcare-budget share (bottom) carry a blue left accent, marking the
+  levers that consume the shared budget.}
+  \label{fig:ui-levers}
+\end{figure}
+
+Each action populates a dedicated panel. A one-year simulation extends the
+province's indicator series past the historical data, with a marker at the first
+simulated year (Figure~\ref{fig:ui-trend}), while a dedicated output panel reports
+the run summary and the bridge log (Figure~\ref{fig:ui-log}). The optimizer returns graded,
+adoptable candidates alongside a post-hoc audit --- feature importances and a
+distilled decision tree (Figure~\ref{fig:ui-candidates}). The ethics dashboard
+trains the chosen model once under every objective and contrasts total GDP,
+inter-provincial inequality and the worst-off floor across the 110 provinces
+(Figure~\ref{fig:ui-ethics}). The NSGA-II view maps the whole efficiency--equity
+frontier as non-dominated lever vectors (Figure~\ref{fig:ui-pareto}). All four
+are read-only what-if analyses: nothing is applied until a candidate is
+explicitly adopted.
+
+\begin{figure}[tbp]
+  \centering
+  \includegraphics[width=\textwidth]{figures/ui/trend.png}
+  \caption{Indicator trend. The selected province's historical series and the
+  simulated next year are plotted together (left); a per-province choropleth of
+  the same indicator gives the national context (right).}
+  \label{fig:ui-trend}
+\end{figure}
+
+\begin{figure}[tbp]
+  \centering
+  \includegraphics[width=\textwidth]{figures/ui/log.png}
+  \caption{Simulation output panel: the latest run summary (mean GDP per capita,
+  income, unemployment, life expectancy) and the streamed bridge log.}
+  \label{fig:ui-log}
+\end{figure}
+
+\begin{figure}[tbp]
+  \centering
+  \includegraphics[width=\textwidth]{figures/ui/candidates.png}
+  \caption{Policy candidates. The optimizer proposes graded interventions for the
+  chosen objective (top), each adoptable, and audits the model with permutation
+  importances and a distilled decision tree (bottom).}
+  \label{fig:ui-candidates}
+\end{figure}
+
+\begin{figure}[tbp]
+  \centering
+  \includegraphics[width=\textwidth]{figures/ui/ethics.png}
+  \caption{Ethics equity dashboard. The same model is trained under every ethical
+  objective and compared on total wealth, inter-provincial Gini and the worst-off
+  floor, with per-framework maps of who gains and who loses.}
+  \label{fig:ui-ethics}
+\end{figure}
+
+\begin{figure}[tbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/ui/pareto.png}
+  \caption{Efficiency--equity frontier. NSGA-II evolves national lever vectors
+  against total GDP, inequality and the worst-off province at once; every plotted
+  point is non-dominated, and the table lists each frontier policy's character.}
+  \label{fig:ui-pareto}
+\end{figure}
 
 \subsection{Pytest}
 

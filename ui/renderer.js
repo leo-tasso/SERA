@@ -1854,9 +1854,17 @@ function App() {
               <li><strong>Read the chart</strong>: simulated years extend the historical series rather than replacing it, so every intervention stays legible against the long-run trend.</li>
             </ol>
           </div>
-          <p className="hero-tip">
-            <strong>Good to know:</strong> nothing here is destructive — simulations, optimizations and frontier maps are all what-if analyses on a copy of the twin. Use <strong>Reset province</strong> to return the allocators to their baseline at any time.
-          </p>
+          <div className="hero-guide">
+            <h2>Key terms</h2>
+            <dl className="hero-glossary">
+              <dt>Resource pool</dt>
+              <dd>The shared national budget every province's spending levers draw from. The reserve absorbs moderate overspending; beyond it, allocations are constrained automatically.</dd>
+              <dt>Ethical objective</dt>
+              <dd>The fairness rule the optimizer maximises — from raw efficiency (utilitarian) to protecting the worst-off provinces (prioritarian, sufficientarian).</dd>
+              <dt>Pareto frontier</dt>
+              <dd>The set of policies where no province can gain without another losing — the efficiency–equity trade-off curve, mapped with NSGA-II.</dd>
+            </dl>
+          </div>
         </div>
         <div className="hero-controls">
           <div className="control-stack">
@@ -1869,10 +1877,6 @@ function App() {
               reserve={reservePool}
               label="National resource pool"
             />
-            <div>
-              <p className="control-label">Map source</p>
-              <p className="control-text">{mapPayload && mapPayload.mapPath}</p>
-            </div>
             <div>
               <p className="control-label">Selected province</p>
               <p className="control-text">

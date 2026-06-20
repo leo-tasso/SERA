@@ -133,6 +133,25 @@ button:disabled {
   font-weight: 700;
 }
 
+.hero-glossary {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+  max-width: 80ch;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.hero-glossary dt {
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.hero-glossary dd {
+  margin: 2px 0 0;
+}
+
 /* Closing callout. margin-top:auto pins it to the bottom of the flex column so
    the copy card fills its grid row height (matched to the taller controls
    column) instead of leaving a gap. */
@@ -639,11 +658,11 @@ button:disabled {
   border-color: var(--accent);
 }
 
-/* Range sliders. Native range inputs carry default UA margins, so width:100%
-   alone spills a few pixels past the card's white border (most visible when the
-   card is wide, e.g. fullscreen) — pin margin to 0. The .model-field input rule
-   above is meant for the number fields, so strip its padding/border/background
-   from the sliders too. */
+/* Range sliders. Native (accent-color) styling — the app's original look. Native
+   range inputs carry default UA margins, so width:100% alone spills a few pixels
+   past the card's white border; pin margin to 0 to keep them inside. The
+   .model-field input rule above targets the number fields, so strip its
+   padding/border/background from the sliders too. */
 .allocator-range,
 .model-field input[type="range"] {
   width: 100%;
@@ -652,6 +671,12 @@ button:disabled {
   border: none;
   background: transparent;
   accent-color: var(--accent);
+}
+
+.allocator-range:disabled,
+.model-field input[type="range"]:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* Keep the gap the original .allocator-range rule gave above its slider. */

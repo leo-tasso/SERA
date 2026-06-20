@@ -200,13 +200,13 @@ The same two pipelines are defined for both GitHub Actions and GitLab CI:
   git push origin v0.1.0
   ```
 
-  The Python sources, trained `twin_models.joblib`, `data/`, and GeoJSON are bundled into
-  the package (`extraResources` → `<resources>/payload/…`, mirroring the repo layout so
-  `backend_bridge.py` and `sera.config` resolve unchanged). **Runtime prerequisite:** the
-  packaged app spawns the Python backend, so the target machine still needs Python 3.11+
-  with the project dependencies installed — the installer ships the code, not the
-  interpreter. (Freezing the backend with PyInstaller to drop that requirement is a
-  possible follow-up.)
+  The backend is frozen into a self-contained executable with PyInstaller (see
+  `backend_bridge.spec`) and bundled alongside the trained `twin_models.joblib`, `data/`,
+  and GeoJSON (`extraResources` → `<resources>/payload/…`). **No Python installation is
+  required on the target machine** — the packaged app spawns the frozen backend, which
+  carries its own interpreter and libraries. CI builds the executable per-OS before
+  `electron-builder` runs; in development (`npm start`) the app falls back to the system /
+  `.venv` Python so the repo layout still resolves unchanged.
 
   > Note: `ui/package-lock.json` predates the `electron-builder` devDependency, so CI uses
   > `npm install`. Run `npm install` in `ui/` once and commit the refreshed lockfile to
