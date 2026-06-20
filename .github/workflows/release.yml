@@ -94,7 +94,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Download all build artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           path: artifacts
 
@@ -106,8 +106,10 @@ jobs:
           TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
         run: |
-          shopt -s globstar nullglob
-          files=(artifacts/**/*)
+          # download-artifact unpacks each artifact into its own subdirectory,
+          # so a recursive glob also matches those directories — and `gh release
+          # upload` rejects a directory ("is a directory"). Collect only files.
+          mapfile -t files < <(find artifacts -type f)
           printf '%s\n' \
             'Automated desktop build of the SERA control-room UI.' \
             '' \
