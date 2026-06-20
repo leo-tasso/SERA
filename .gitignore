@@ -6,6 +6,11 @@ dataBK/**
 .vscode/**
 **/node_modules/**
 
+# PyInstaller backend-freeze outputs (built in CI, see backend_bridge.spec)
+/build/
+ui/pydist/
+ui/dist/
+
 # LaTeX build artifacts (keep report/*.tex and report/*.pdf)
 report/*.aux
 report/*.log

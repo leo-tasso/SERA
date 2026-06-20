@@ -39,6 +39,18 @@ package-linux:
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/'
   script:
+    # Freeze the Python backend into a self-contained executable so the released
+    # app needs no system Python. The electronuserland/builder image is Debian-
+    # based; install a Python toolchain in an isolated venv (PEP 668 blocks the
+    # system pip) and run PyInstaller from the repo root. electron-builder then
+    # bundles ui/pydist/backend_bridge via "extraResources" in package.json.
+    - apt-get update -qq && apt-get install -y -qq python3 python3-venv python3-pip
+    - python3 -m venv /tmp/pybuild
+    - . /tmp/pybuild/bin/activate
+    - pip install --upgrade pip
+    - pip install -e ".[build]"
+    - pyinstaller --noconfirm --clean --distpath "$CI_PROJECT_DIR/ui/pydist" backend_bridge.spec
+    - deactivate
     - cd ui
     - npm install
     # The installer name comes from electron-builder's ${version}, which it reads
@@ -89,8 +101,8 @@ release:
       Download the installers from the assets below (hosted in the project
       Package Registry).
 
-      Runtime prerequisite: Python 3.11+ with project dependencies
-      (`pip install -e .`); the Python backend, trained twin, data and
+      Self-contained: the Python backend is bundled as a frozen executable,
+      so no Python installation is required. The trained twin, data and
       GeoJSON are bundled inside the package. Windows/macOS installers are
       produced by the GitHub Actions release workflow.
     assets:

@@ -1,11 +1,18 @@
 """Configuration and constants for SERA downloader."""
 
+import os
 from pathlib import Path
 from typing import Final
 
 # Paths
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
+#
+# In a normal checkout PROJECT_ROOT is three levels up from this file. In a
+# frozen build (PyInstaller) this module lives inside the bundle, so that
+# derivation is meaningless; the Electron shell instead sets SERA_PROJECT_ROOT
+# to the unpacked payload directory that ships the real data/ and twin model.
+_ENV_ROOT = os.environ.get("SERA_PROJECT_ROOT")
+PROJECT_ROOT = Path(_ENV_ROOT) if _ENV_ROOT else Path(__file__).parent.parent.parent
+DATA_DIR = Path(os.environ.get("SERA_DATA_DIR") or (PROJECT_ROOT / "data"))
 CACHE_DIR = DATA_DIR / "cache"
 
 # ISTAT API configuration

@@ -1,7 +1,7 @@
 {
   "name": "sera-ui",
   "productName": "SERA Control Room",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "private": true,
   "description": "SERA — ethically-governed digital twin of the Italian provinces (control-room UI).",
   "author": "Leonardo Tassinari <leonardo.tassinari6@studio.unibo.it>",
@@ -42,6 +42,7 @@
       "!dist/**/*"
     ],
     "extraResources": [
+      { "from": "pydist/backend_bridge", "to": "payload/backend" },
       { "from": "../src", "to": "payload/src", "filter": ["**/*", "!**/__pycache__/**", "!**/*.pyc"] },
       { "from": "../data", "to": "payload/data" },
       { "from": "../twin_models.joblib", "to": "payload/twin_models.joblib" },

@@ -38,6 +38,21 @@ function getPythonExecutable() {
   return 'python3'
 }
 
+// How to launch the Python backend bridge.
+//   * Packaged build: a self-contained PyInstaller executable shipped under
+//     <resources>/payload/backend, so the end user needs no Python install.
+//   * Development (`npm start`): the system / .venv Python running the bridge
+//     script directly from the repo.
+// Both speak the same protocol — argv[1] is the command, the JSON payload comes
+// in on stdin — so the rest of the code is identical for either launcher.
+function getBackendLauncher() {
+  if (app.isPackaged) {
+    const exeName = process.platform === 'win32' ? 'backend_bridge.exe' : 'backend_bridge'
+    return { command: path.join(PAYLOAD_ROOT, 'backend', exeName), prefixArgs: [] }
+  }
+  return { command: getPythonExecutable(), prefixArgs: [BRIDGE_PATH] }
+}
+
 function resolveMapPath() {
   for (const candidate of DEFAULT_MAP_PATHS) {
     if (candidate && fs.existsSync(candidate)) {
@@ -64,8 +79,13 @@ function parseBridgeOutput(stdout, stderr, status) {
 
 function runBridgeAsync(command, payload, webContents) {
   return new Promise((resolve, reject) => {
-    const proc = spawn(getPythonExecutable(), [BRIDGE_PATH, command], {
+    const { command: launcher, prefixArgs } = getBackendLauncher()
+    const proc = spawn(launcher, [...prefixArgs, command], {
       cwd: REPO_ROOT,
+      // The bundled data/ and twin model live next to the executable in the
+      // payload, not at sera.config's __file__-derived path; point the backend
+      // there. Harmless in dev (it already resolves to the same repo root).
+      env: { ...process.env, SERA_PROJECT_ROOT: REPO_ROOT },
       stdio: ['pipe', 'pipe', 'pipe'],
     })
 
