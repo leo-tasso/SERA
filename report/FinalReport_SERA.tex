@@ -120,7 +120,7 @@ conflated:
     plus a causal graph that is hand-written but \emph{panel-reviewed} (its edge
     directions checked against, and corrected by, the historical data;
     Section~\ref{sec:datareview}), with honestly documented uncertainty.
-    \item \textbf{How do we search?} The policy model: seven optimizers
+    \item \textbf{How do I search?} The policy model: seven optimizers
     spanning an explainability spectrum from printable IF/THEN rules to a neural
     network.
     \item \textbf{What counts as better?} The ethical objective: four
@@ -256,7 +256,9 @@ bridge script (\code{ui/backend\_bridge.py}), one process per command
 streaming structured progress messages over \code{stderr}. The desktop build
 ships a self-contained backend: \code{backend\_bridge.py} is frozen with
 PyInstaller and bundled with the trained twin and data, so the installed app
-needs no Python on the target machine.
+needs no Python on the target machine. Prebuilt Windows and macOS installers are
+produced automatically by CI and published as GitHub releases
+(Section~\ref{sec:repro}).
 
 \begin{figure}[tbp]
   \centering
@@ -824,7 +826,7 @@ province equal weight regardless of size, a small province counts as much as
 a large one, which is itself a (mildly egalitarian) deviation from
 population-weighted utilitarianism, under which each \emph{person} would count
 equally and large provinces would dominate. Switching to population weighting is
-a one-line change; we keep the unweighted form deliberately, having chosen
+a one-line change; I keep the unweighted form deliberately, having chosen
 province-equality over person-equality with eyes open.
 
 \subsection{Justice as Fairness: the philosophical view}
@@ -1833,7 +1835,7 @@ Six observations, with the standing caveat that they describe the simulator
     \cmpUtilWorstDelta\% to \cmpEgalWorstDelta\%. With \cmpSeeds{} seeds these
     carry tight bootstrap confidence intervals: the utilitarian GDP gain is
     \cmpUtilGdpDelta$\pm$\cmpUtilGdpCI\%, its floor \cmpUtilWorstDelta$\pm$%
-    \cmpUtilWorstCI\% (95\% CI), and the headline orderings below that we
+    \cmpUtilWorstCI\% (95\% CI), and the headline orderings below that I
     flag as robust are exactly those whose intervals do not overlap. The ethical
     choice is not decorative: it is the difference between the rows.
     \item \textbf{The utilitarian optimum is a rising tide that under-serves the
@@ -1952,7 +1954,7 @@ publishable ``maximin under-optimizes its own objective'' story that
 a cautionary tale about reading a gradient-free optimizer's headline off one
 run. The second is substantive: a moral principle's practical meaning depends
 on the response structure of the system it optimizes \emph{and} on how
-optimizable its objective is, which is why we added the smoothed CVaR
+optimizable its objective is, which is why I added the smoothed CVaR
 maximin, and why the lesson it teaches (broadening maximin's one-province
 signal to the bottom quintile improves the growth and inequality it delivers at
 no cost to the floor) could only be read off an experiment that held the
@@ -2068,16 +2070,21 @@ core is hand-written and dominates aggressive scenarios; the experimental
 magnitudes are bounded by calibrated caps; the data measure only the measured
 population; and the unit of fairness is the province. A system that knows and
 says what it cannot see is the difference between decision support and
-automation bias with extra steps. Future work follows directly: a
-user-thresholded sufficientarian objective and a concavity-parameterized
-prioritarian one (Section~\ref{sec:notimplemented}), multi-seed replication of
-the framework comparison, population-weighted welfare variants, and
-within-province distribution if data permits.
+automation bias with extra steps.
 
 \section{Reproducibility}
 \label{sec:repro}
 
-The project requires Python 3.11 and Node.js. From the repository root:
+The full source is on GitHub at \url{https://github.com/leo-tasso/SERA} and
+mirrored on the course GitLab at
+\url{https://dvcs.apice.unibo.it/pika-lab/courses/ai-ethics/projects/tassinari2526}.
+For users who only want to run the control room, a GitHub Actions workflow builds
+self-contained desktop installers for both Windows and macOS on every tagged
+release, each bundling the PyInstaller-frozen backend and the trained twin, so
+no Python or Node toolchain is needed on the target machine; they are published
+under the repository's \emph{Releases} page. To build and reproduce the results
+from source, the project requires Python 3.11 and Node.js. From the repository
+root:
 
 {\footnotesize
 \begin{verbatim}
